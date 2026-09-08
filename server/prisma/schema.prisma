@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model article {
+  id String @db.Uuid @default(dbgenerated("gen_random_uuid()")) @id
+  title String @db.VarChar(150)
+  slug String @db.VarChar(255) @unique
+  body String @db.Text
+  searchVector Unsupported("tsvector")? @map("search_vector")
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @db.Timestamptz
+
+  @@index([searchVector], map: "idx_article_search_vector", type: Gin)
+}
+
