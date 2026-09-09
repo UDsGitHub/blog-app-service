@@ -14,7 +14,7 @@ model article {
   body String @db.Text
   searchVector Unsupported("tsvector")? @map("search_vector")
   createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @db.Timestamptz
+  updatedAt DateTime? @db.Timestamptz
 
   @@index([searchVector], map: "idx_article_search_vector", type: Gin)
 }

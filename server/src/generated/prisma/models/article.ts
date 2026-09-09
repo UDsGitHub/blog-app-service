@@ -159,7 +159,7 @@ export type ArticleGroupByOutputType = {
   slug: string
   body: string
   createdAt: Date
-  updatedAt: Date
+  updatedAt: Date | null
   _count: ArticleCountAggregateOutputType | null
   _min: ArticleMinAggregateOutputType | null
   _max: ArticleMaxAggregateOutputType | null
@@ -189,7 +189,7 @@ export type articleWhereInput = {
   slug?: Prisma.StringFilter<"article"> | string
   body?: Prisma.StringFilter<"article"> | string
   createdAt?: Prisma.DateTimeFilter<"article"> | Date | string
-  updatedAt?: Prisma.DateTimeFilter<"article"> | Date | string
+  updatedAt?: Prisma.DateTimeNullableFilter<"article"> | Date | string | null
 }
 
 export type articleOrderByWithRelationInput = {
@@ -198,7 +198,7 @@ export type articleOrderByWithRelationInput = {
   slug?: Prisma.SortOrder
   body?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-  updatedAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
 }
 
 export type articleWhereUniqueInput = Prisma.AtLeast<{
@@ -210,7 +210,7 @@ export type articleWhereUniqueInput = Prisma.AtLeast<{
   title?: Prisma.StringFilter<"article"> | string
   body?: Prisma.StringFilter<"article"> | string
   createdAt?: Prisma.DateTimeFilter<"article"> | Date | string
-  updatedAt?: Prisma.DateTimeFilter<"article"> | Date | string
+  updatedAt?: Prisma.DateTimeNullableFilter<"article"> | Date | string | null
 }, "id" | "slug">
 
 export type articleOrderByWithAggregationInput = {
@@ -219,7 +219,7 @@ export type articleOrderByWithAggregationInput = {
   slug?: Prisma.SortOrder
   body?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-  updatedAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.articleCountOrderByAggregateInput
   _max?: Prisma.articleMaxOrderByAggregateInput
   _min?: Prisma.articleMinOrderByAggregateInput
@@ -234,7 +234,7 @@ export type articleScalarWhereWithAggregatesInput = {
   slug?: Prisma.StringWithAggregatesFilter<"article"> | string
   body?: Prisma.StringWithAggregatesFilter<"article"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"article"> | Date | string
-  updatedAt?: Prisma.DateTimeWithAggregatesFilter<"article"> | Date | string
+  updatedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"article"> | Date | string | null
 }
 
 export type articleCreateInput = {
@@ -243,7 +243,7 @@ export type articleCreateInput = {
   slug: string
   body: string
   createdAt?: Date | string
-  updatedAt: Date | string
+  updatedAt?: Date | string | null
 }
 
 export type articleUncheckedCreateInput = {
@@ -252,7 +252,7 @@ export type articleUncheckedCreateInput = {
   slug: string
   body: string
   createdAt?: Date | string
-  updatedAt: Date | string
+  updatedAt?: Date | string | null
 }
 
 export type articleUpdateInput = {
@@ -261,7 +261,7 @@ export type articleUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type articleUncheckedUpdateInput = {
@@ -270,7 +270,7 @@ export type articleUncheckedUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type articleCreateManyInput = {
@@ -279,7 +279,7 @@ export type articleCreateManyInput = {
   slug: string
   body: string
   createdAt?: Date | string
-  updatedAt: Date | string
+  updatedAt?: Date | string | null
 }
 
 export type articleUpdateManyMutationInput = {
@@ -288,7 +288,7 @@ export type articleUpdateManyMutationInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type articleUncheckedUpdateManyInput = {
@@ -297,7 +297,7 @@ export type articleUncheckedUpdateManyInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type articleCountOrderByAggregateInput = {
@@ -333,6 +333,10 @@ export type StringFieldUpdateOperationsInput = {
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
 }
 
 
@@ -384,7 +388,7 @@ export type $articlePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     slug: string
     body: string
     createdAt: Date
-    updatedAt: Date
+    updatedAt: Date | null
   }, ExtArgs["result"]["article"]>
   composites: {}
 }
