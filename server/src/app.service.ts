@@ -28,9 +28,16 @@ export class AppService {
     });
   }
 
-  update(id: string, updateArticleDto: UpdateArticleDto) {
+  async update(id: string, updateArticleDto: UpdateArticleDto) {
+    const updateData = { ...updateArticleDto };
+
+    if (updateArticleDto.title) {
+      const updatedSlug = await this.getSlug(updateArticleDto.title, id);
+      updateData['slug'] = updatedSlug;
+    }
+
     return this.prisma.article.update({
-      data: updateArticleDto,
+      data: updateData,
       where: { id },
     });
   }
@@ -39,7 +46,10 @@ export class AppService {
     return this.prisma.article.delete({ where: { id } });
   }
 
-  private async getSlug(inputString: string): Promise<string> {
+  private async getSlug(
+    inputString: string,
+    excludeId?: string,
+  ): Promise<string> {
     const baseSlug = slug(inputString);
     let uniqueSlug = baseSlug;
     let counter = 1;
@@ -48,6 +58,13 @@ export class AppService {
       const count = await this.prisma.article.count({
         where: {
           slug: uniqueSlug,
+          ...(excludeId
+            ? {
+                id: {
+                  not: excludeId,
+                },
+              }
+            : {}),
         },
       });
 

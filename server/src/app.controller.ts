@@ -11,7 +11,7 @@ import { AppService } from './app.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 
-@Controller('article')
+@Controller('articles')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
@@ -25,7 +25,7 @@ export class AppController {
     return this.appService.findAll();
   }
 
-  @Get(':id')
+  @Get(':slug')
   findArticle(@Param('slug') slug: string) {
     return this.appService.findOne(slug);
   }
