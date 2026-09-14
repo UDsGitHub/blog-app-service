@@ -14,22 +14,33 @@ import { AppService } from './app.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { Article } from './entities/article.entity';
+import { ApiResponse } from '@nestjs/swagger';
 
 @Controller('articles')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Post()
+  @ApiResponse({
+    type: Article,
+  })
   createArticle(@Body() createArticleDto: CreateArticleDto): Promise<Article> {
     return this.appService.create(createArticleDto);
   }
 
   @Get()
+  @ApiResponse({
+    type: Article,
+    isArray: true,
+  })
   findArticles(): Promise<Article[]> {
     return this.appService.findAll();
   }
 
   @Get(':slug')
+  @ApiResponse({
+    type: Article,
+  })
   async findArticle(@Param('slug') slug: string): Promise<Article | null> {
     const article = await this.appService.findOne(slug);
     if (article === null) {
@@ -39,6 +50,9 @@ export class AppController {
   }
 
   @Patch(':id')
+  @ApiResponse({
+    type: Article,
+  })
   updateArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateArticleDto: UpdateArticleDto,
@@ -56,6 +70,9 @@ export class AppController {
   }
 
   @Delete(':id')
+  @ApiResponse({
+    type: Article,
+  })
   removeArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<Article> {
