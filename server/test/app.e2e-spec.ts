@@ -98,4 +98,28 @@ describe('AppController (e2e)', () => {
     expect(secondArticle).toEqual(article2);
     expect(firstArticle.slug).not.toBe(secondArticle.slug);
   });
+
+  it('create article throws 400 error on bad request', async () => {
+    await request(app.getHttpServer()).post('/articles').send().expect(400);
+    await request(app.getHttpServer())
+      .post('/articles')
+      .send({ title: 'hello' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/articles')
+      .send({ body: 'goodbye' })
+      .expect(400);
+  });
+
+  it('update article throws 400 error on bad request', async () => {
+    const randomId = crypto.randomUUID();
+    await request(app.getHttpServer()).patch('/articles/1').expect(400);
+    await request(app.getHttpServer())
+      .patch(`/articles/${randomId}`)
+      .expect(400);
+  });
+
+  it('delete article throws 400 error on bad request', async () => {
+    await request(app.getHttpServer()).delete('/articles/1').expect(400);
+  });
 });
