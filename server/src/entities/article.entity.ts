@@ -4,5 +4,5 @@ export class Article {
   slug: string = '';
   body: string = '';
   createdAt: Date = new Date();
-  updatedAt?: Date;
+  updatedAt: Date | null = null;
 }

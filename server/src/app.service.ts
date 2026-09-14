@@ -17,7 +17,7 @@ export class AppService {
   }
 
   findAll() {
-    return this.prisma.article.findMany();
+    return this.prisma.article.findMany({ orderBy: { createdAt: 'asc' } });
   }
 
   findOne(slug: string) {

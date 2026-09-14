@@ -10,6 +10,6 @@
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
   "transformIgnorePatterns": [
-    "node_modules/(?!slug/|@nestjs/mapped-types/|@nestjs/config/)"
+    "node_modules/(?!@nestjs/mapped-types)"
   ]
 }
