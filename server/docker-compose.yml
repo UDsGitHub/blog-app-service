@@ -17,6 +17,18 @@ services:
       retries: 10
       start_period: 10s
 
+  migrate:
+    build:
+      context: .
+      target: prod
+    command: npx prisma migrate deploy --config ./prisma7.config.ts
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   server:
     build:
       context: .
@@ -31,6 +43,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pg_data:

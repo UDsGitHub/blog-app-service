@@ -1,13 +1,13 @@
-jest.mock('./prisma.service', () => ({
+jest.mock('../prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { AppService } from './app.service';
-import { PrismaService } from './prisma.service';
+import { ArticleService } from './article.service';
+import { PrismaService } from '../prisma.service';
 
-describe('AppService', () => {
-  let service: AppService;
+describe('ArticleService', () => {
+  let service: ArticleService;
   const prisma = {
     article: {
       create: jest.fn(),
@@ -24,7 +24,7 @@ describe('AppService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        AppService,
+        ArticleService,
         {
           provide: PrismaService,
           useValue: prisma,
@@ -32,7 +32,7 @@ describe('AppService', () => {
       ],
     }).compile();
 
-    service = module.get<AppService>(AppService);
+    service = module.get<ArticleService>(ArticleService);
   });
 
   it('creates an article with a unique slug', async () => {
@@ -113,7 +113,7 @@ describe('AppService', () => {
       },
     ]);
 
-    const returnValue = await service.findAll();
+    const returnValue = await service.findAll(25);
 
     expect(returnValue).toHaveLength(2);
   });

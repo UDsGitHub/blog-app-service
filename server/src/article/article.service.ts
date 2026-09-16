@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
-import { PrismaService } from './prisma.service';
-import slug from 'slug';
+import { PrismaService } from '../prisma.service';
 import { Article } from './entities/article.entity';
+import slug from 'slug';
 
 @Injectable()
-export class AppService {
+export class ArticleService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createArticleDto: CreateArticleDto) {

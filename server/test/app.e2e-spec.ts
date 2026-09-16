@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma.service';
-import { Article } from '../src/entities/article.entity';
+import { Article } from '../src/article/entities/article.entity';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
