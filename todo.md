@@ -1,0 +1,2 @@
+- [ ] start buidling out frontend
+- [ ] add redis caching to the backend

@@ -20,7 +20,7 @@ services:
   migrate:
     build:
       context: .
-      target: prod
+      target: migrate
     command: npx prisma migrate deploy --config ./prisma7.config.ts
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}

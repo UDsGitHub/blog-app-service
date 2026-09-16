@@ -14,6 +14,10 @@ FROM deps AS build
 COPY . .
 RUN npm run build
 
+FROM deps AS migrate
+COPY prisma7.config.ts ./
+CMD ["npx", "prisma", "migrate", "deploy", "--config", "./prisma7.config.ts"]
+
 FROM node:24-slim AS prod
 WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json .
