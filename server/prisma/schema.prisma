@@ -13,8 +13,8 @@ model article {
   slug String @db.VarChar(255) @unique
   body String @db.Text
   searchVector Unsupported("tsvector")? @map("search_vector")
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime? @db.Timestamptz @map("updated_at")
 
   @@index([searchVector], map: "idx_article_search_vector", type: Gin)
 }

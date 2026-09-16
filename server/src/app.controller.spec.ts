@@ -1,6 +1,3 @@
-jest.mock('@nestjs/mapped-types', () => ({
-  PartialType: (classRef: new (...args: never[]) => object) => classRef,
-}));
 jest.mock('./prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
@@ -14,7 +11,7 @@ describe('AppController', () => {
   const appService = {
     create: jest.fn(),
     findAll: jest.fn(),
-    findOne: jest.fn(),
+    findBySlug: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
   };
@@ -42,13 +39,19 @@ describe('AppController', () => {
   });
 
   it('calls app.service.findAll()', async () => {
-    await controller.findArticles();
-    expect(appService.findAll).toHaveBeenCalled();
+    await controller.findArticles({ limit: 25 });
+    expect(appService.findAll).toHaveBeenCalledWith(25, undefined, undefined);
   });
 
-  it('calls app.service.findOne()', async () => {
+  it('calls app.service.findAll() with pagination args', async () => {
+    const cursorId = crypto.randomUUID();
+    await controller.findArticles({ cursorId, limit: 25 });
+    expect(appService.findAll).toHaveBeenCalledWith(25, cursorId, undefined);
+  });
+
+  it('calls app.service.findBySlug()', async () => {
     await controller.findArticle('title');
-    expect(appService.findOne).toHaveBeenCalledWith('title');
+    expect(appService.findBySlug).toHaveBeenCalledWith('title');
   });
 
   it('calls app.service.update()', async () => {

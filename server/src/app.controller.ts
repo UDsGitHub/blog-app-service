@@ -7,14 +7,15 @@ import {
   Param,
   Delete,
   BadRequestException,
-  NotFoundException,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { AppService } from './app.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { Article } from './entities/article.entity';
 import { ApiResponse } from '@nestjs/swagger';
+import { FindArticlesQueryDto } from './dto/find-articles.dto';
 
 @Controller('articles')
 export class AppController {
@@ -24,7 +25,9 @@ export class AppController {
   @ApiResponse({
     type: Article,
   })
-  createArticle(@Body() createArticleDto: CreateArticleDto): Promise<Article> {
+  async createArticle(
+    @Body() createArticleDto: CreateArticleDto,
+  ): Promise<Article> {
     return this.appService.create(createArticleDto);
   }
 
@@ -33,8 +36,13 @@ export class AppController {
     type: Article,
     isArray: true,
   })
-  findArticles(): Promise<Article[]> {
-    return this.appService.findAll();
+  async findArticles(@Query() query: FindArticlesQueryDto): Promise<Article[]> {
+    if (query.cursorId && query.search) {
+      throw new BadRequestException(
+        'cursorId cannot be set when passing search term.',
+      );
+    }
+    return this.appService.findAll(query.limit, query.cursorId, query.search);
   }
 
   @Get(':slug')
@@ -42,11 +50,7 @@ export class AppController {
     type: Article,
   })
   async findArticle(@Param('slug') slug: string): Promise<Article | null> {
-    const article = await this.appService.findOne(slug);
-    if (article === null) {
-      throw new NotFoundException('Article not found');
-    }
-    return article;
+    return this.appService.findBySlug(slug);
   }
 
   @Patch(':id')
@@ -56,7 +60,7 @@ export class AppController {
   updateArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateArticleDto: UpdateArticleDto,
-  ): Promise<Article> | null {
+  ): Promise<Article> {
     if (
       (updateArticleDto?.title === undefined ||
         updateArticleDto?.title === null) &&

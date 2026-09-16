@@ -129,7 +129,7 @@ describe('AppService', () => {
 
     prisma.article.findUnique.mockResolvedValue(expectedReturnValue);
 
-    const returnValue = await service.findOne('title');
+    const returnValue = await service.findBySlug('title');
 
     expect(prisma.article.findUnique).toHaveBeenCalledWith({
       where: {
