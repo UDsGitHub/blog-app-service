@@ -1,98 +1,147 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Blog API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Headless NestJS service for blog articles. It stores posts in PostgreSQL, generates unique slugs from titles, and supports cursor pagination plus Postgres full-text search.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Stack
 
-## Description
+- NestJS 11 (Express)
+- Prisma 7 with the `pg` driver adapter
+- PostgreSQL 18
+- Swagger (`/api`) when `NODE_ENV` is not `production`
+- Terminus health check that pings the database
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Node 24 is what CI and the Docker images use.
 
-## Project setup
+## Setup
+
+From this directory:
 
 ```bash
-$ npm install
+cp .env.example .env
+npm ci
+npx prisma generate
 ```
 
-## Compile and run the project
+Fill in `.env`. Compose interpolates `DB_USER`, `DB_PASSWORD`, and `DB_NAME` from `.env` in this folder. The Nest process reads `DATABASE_URL`.
+
+| Variable | Purpose |
+| --- | --- |
+| `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Postgres role and database (Compose + `pg_isready`) |
+| `DATABASE_URL` | Prisma connection string |
+| `PORT` | HTTP port (defaults to `3000`) |
+| `NODE_ENV` | `production` disables Swagger |
+| `CORS_ORIGINS` | Comma-separated allowed origins (defaults to `http://localhost:3000`) |
+
+`DATABASE_URL` host depends on where Nest runs:
+
+- Nest on the host, Postgres in Compose: `localhost:5433` (Compose publishes `5433:5432`)
+- Nest on the host, Postgres on your machine: `localhost:5432`
+- Nest in Compose: hostname `db` on port `5432` (see `.env.test`)
+
+Apply migrations after Postgres is up:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npx prisma migrate deploy --config ./prisma7.config.ts
 ```
 
-## Run tests
+Schema changes during development:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npx prisma migrate dev --config ./prisma7.config.ts --name <migration_name>
 ```
 
-## Deployment
+## Run
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Docker Compose (Postgres + migrate + API)
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+docker compose up --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+This starts Postgres, runs `prisma migrate deploy`, then the Nest dev server. The API is at [http://localhost:3001](http://localhost:3001). The server container loads `.env.test`, whose `DATABASE_URL` points at the `db` service.
 
-## Resources
+Postgres only:
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+docker compose up db -d
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Then run Nest on the host (`npm run start:dev`) with `DATABASE_URL` aimed at `localhost:5433`.
 
-## Support
+### Local Nest
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npm run start:dev
+```
 
-## Stay in touch
+| Script | What it does |
+| --- | --- |
+| `npm run start:dev` | Watch mode |
+| `npm run start:debug` | Watch + debugger |
+| `npm run build && npm run start:prod` | Compile and run `dist/main` |
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## HTTP API
 
-## License
+Base URL is `/`. Interactive docs: [http://localhost:3000/api](http://localhost:3000/api) (or port `3001` under Compose).
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/` | Welcome text |
+| `GET` | `/health` | Prisma `SELECT 1`; **200** if the DB is reachable, **503** otherwise |
+| `POST` | `/articles` | Body: `{ "title", "body" }`. Slug is derived from the title (`my-title`, then `my-title-1` on collision) |
+| `GET` | `/articles` | Query: `limit` (1–100, default 25), `cursorId` (UUID), `search`. `cursorId` and `search` cannot be combined |
+| `GET` | `/articles/:slug` | **404** if missing |
+| `PATCH` | `/articles/:id` | UUID. At least one of `title` or `body`. Title changes regenerate the slug |
+| `DELETE` | `/articles/:id` | UUID |
+
+List without `search` is newest-first cursor pagination. `search` uses `plainto_tsquery` on a generated `tsvector` and ranks by relevance.
+
+Article JSON:
+
+```json
+{
+  "id": "uuid",
+  "title": "First article",
+  "slug": "first-article",
+  "body": "Hello world",
+  "createdAt": "2026-09-17T00:00:00.000Z",
+  "updatedAt": null
+}
+```
+
+## Tests
+
+```bash
+npm run test          # unit
+npm run test:e2e      # needs a migrated database and DATABASE_URL
+npm run test:cov      # coverage
+npm run lint
+npx tsc --noEmit
+```
+
+E2E expects Postgres (local or CI service) and:
+
+```bash
+npx prisma migrate deploy --config ./prisma7.config.ts
+npx prisma generate
+```
+
+CI (`.github/workflows/ci-main.yml`) runs typecheck, lint, unit tests, and build on server changes. Image builds (`prod`, `migrate`) and e2e run on `main`.
+
+## Docker images
+
+The [Dockerfile](./Dockerfile) has four targets:
+
+| Target | Role |
+| --- | --- |
+| `deps` | `npm ci` + `prisma generate` |
+| `dev` | watch server (Compose `server` service) |
+| `migrate` | `prisma migrate deploy` |
+| `prod` | `node dist/main.js` as a non-root user |
+
+```bash
+docker build --target prod .
+docker build --target migrate .
+```
+
+The production image does not copy Prisma schema or run migrations. Run the `migrate` target (or `prisma migrate deploy`) against the same `DATABASE_URL` before serving traffic.
