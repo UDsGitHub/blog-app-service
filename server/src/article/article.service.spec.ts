@@ -62,6 +62,7 @@ describe('ArticleService', () => {
         title,
         slug,
         body,
+        status: ArticleStatus.DRAFT,
       },
     });
     expect(returnValue).toBe(expectedReturnValue);
@@ -93,6 +94,7 @@ describe('ArticleService', () => {
         title,
         slug,
         body,
+        status: ArticleStatus.DRAFT,
       },
     });
     expect(returnValue).toBe(expectedReturnValue);
