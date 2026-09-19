@@ -10,10 +10,10 @@ export class ArticleService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createArticleDto: CreateArticleDto) {
-    const { title, body } = createArticleDto;
+    const { title, body, status } = createArticleDto;
     const titleSlug = await this.getSlug(title);
     return this.prisma.article.create({
-      data: { title, body, slug: titleSlug },
+      data: { title, body, slug: titleSlug, status },
     });
   }
 

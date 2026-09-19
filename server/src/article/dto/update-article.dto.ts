@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ArticleStatus } from '../../generated/prisma/client';
 
 export class UpdateArticleDto {
   @ApiProperty()
@@ -13,4 +14,10 @@ export class UpdateArticleDto {
   @IsString()
   @IsNotEmpty()
   body?: string;
+
+  @ApiProperty()
+  @IsEnum(ArticleStatus)
+  @IsOptional()
+  @IsNotEmpty()
+  status?: ArticleStatus;
 }

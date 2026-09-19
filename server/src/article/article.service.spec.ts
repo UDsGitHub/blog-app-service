@@ -5,6 +5,7 @@ jest.mock('../prisma.service', () => ({
 import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleService } from './article.service';
 import { PrismaService } from '../prisma.service';
+import { ArticleStatus } from '../generated/prisma/client';
 
 describe('ArticleService', () => {
   let service: ArticleService;
@@ -53,6 +54,7 @@ describe('ArticleService', () => {
     const returnValue = await service.create({
       title,
       body: 'Hello World',
+      status: ArticleStatus.DRAFT,
     });
 
     expect(prisma.article.create).toHaveBeenCalledWith({
@@ -83,6 +85,7 @@ describe('ArticleService', () => {
     const returnValue = await service.create({
       title,
       body: 'Hello World',
+      status: ArticleStatus.DRAFT,
     });
 
     expect(prisma.article.create).toHaveBeenCalledWith({

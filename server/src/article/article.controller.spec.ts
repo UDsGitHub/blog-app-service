@@ -5,6 +5,7 @@ jest.mock('../prisma.service', () => ({
 import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleController } from './article.controller';
 import { ArticleService } from './article.service';
+import { ArticleStatus } from '../generated/prisma/client';
 
 describe('ArticleController', () => {
   let controller: ArticleController;
@@ -33,7 +34,11 @@ describe('ArticleController', () => {
   });
 
   it('calls app.service.create()', async () => {
-    const requestData = { title: 'title', body: 'body' };
+    const requestData = {
+      title: 'title',
+      body: 'body',
+      status: ArticleStatus.DRAFT,
+    };
     await controller.createArticle(requestData);
     expect(appService.create).toHaveBeenCalledWith(requestData);
   });
@@ -55,7 +60,7 @@ describe('ArticleController', () => {
   });
 
   it('calls app.service.update()', async () => {
-    const requestData = { title: 'title' };
+    const requestData = { title: 'title', status: ArticleStatus.ARCHIVED };
     await controller.updateArticle('1', requestData);
     expect(appService.update).toHaveBeenCalledWith('1', requestData);
   });

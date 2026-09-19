@@ -47,6 +47,7 @@ describe('AppController (e2e)', () => {
         body: createdArticle.body,
       }).toMatchObject(expectedData);
       expect(createdArticle.slug).toEqual('first-article');
+      expect(createdArticle.status).toEqual('DRAFT');
 
       const getArticlesRes = await request(app.getHttpServer())
         .get(`/articles/${createdArticle.slug}`)
@@ -57,12 +58,13 @@ describe('AppController (e2e)', () => {
       const expectedSlug = 'updated-first-article';
       const updateArticleRes = await request(app.getHttpServer())
         .patch(`/articles/${createdArticle.id}`)
-        .send({ title: expectedTitle })
+        .send({ title: expectedTitle, status: 'PUBLISHED' })
         .expect(200);
       const updatedArticle = updateArticleRes.body as Article;
-      expect(updatedArticle.title).toEqual(expectedTitle);
       expect(updatedArticle.body).toEqual(createdArticle.body);
+      expect(updatedArticle.title).toEqual(expectedTitle);
       expect(updatedArticle.slug).toEqual(expectedSlug);
+      expect(updatedArticle.status).toEqual('PUBLISHED');
 
       await request(app.getHttpServer())
         .delete(`/articles/${createdArticle.id}`)
@@ -261,6 +263,15 @@ describe('AppController (e2e)', () => {
         .patch(`/articles/${randomId}`)
         .send({ title: 'gone' })
         .expect(404);
+      const response = await request(app.getHttpServer())
+        .post('/articles')
+        .send({ title: 'hello', body: 'world' })
+        .expect(201);
+      const createdArticle = response.body as Article;
+      await request(app.getHttpServer())
+        .patch(`/articles/${createdArticle.id}`)
+        .send({ status: 'BAD_STATUS' })
+        .expect(400);
     });
 
     it('delete article throws 400 error on bad request', async () => {

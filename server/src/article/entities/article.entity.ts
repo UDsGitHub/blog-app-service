@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum } from 'class-validator';
+import { ArticleStatus } from '../../generated/prisma/client';
 
 export class Article {
   @ApiProperty()
@@ -12,6 +14,10 @@ export class Article {
 
   @ApiProperty()
   body: string = '';
+
+  @ApiProperty()
+  @IsEnum(ArticleStatus)
+  status: ArticleStatus = 'DRAFT';
 
   @ApiProperty()
   createdAt: Date = new Date();
