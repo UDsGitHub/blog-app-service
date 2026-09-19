@@ -20,6 +20,9 @@ CMD ["npx", "prisma", "migrate", "deploy", "--config", "./prisma7.config.ts"]
 
 FROM node:24-slim AS prod
 WORKDIR /app
+RUN apt-get update -y \
+  && apt-get install -y openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/package.json /app/package-lock.json .
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
