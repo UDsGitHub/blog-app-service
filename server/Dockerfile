@@ -24,7 +24,7 @@ RUN apt-get update -y \
   && apt-get install -y openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/package.json /app/package-lock.json .
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 COPY --from=build /app/dist ./dist
 COPY prisma ./prisma
 COPY prisma7.config.ts ./
