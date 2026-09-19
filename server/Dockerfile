@@ -23,6 +23,8 @@ WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json .
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
+COPY prisma ./prisma
+COPY prisma7.config.ts ./
 RUN useradd --create-home appuser
 USER appuser
 CMD ["node", "dist/main.js"]
