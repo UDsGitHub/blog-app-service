@@ -1,0 +1,13 @@
+{
+  "name": "blog-app",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "typecheck": "npm --prefix client run typecheck && npm --prefix server run typecheck",
+    "lint": "npm --prefix client run lint && npm --prefix server run lint",
+    "test": "npm --prefix server run test"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

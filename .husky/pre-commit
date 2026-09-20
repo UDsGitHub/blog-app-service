@@ -1,0 +1,15 @@
+# Run package checks only when that package has staged changes.
+changed=$(git diff --cached --name-only)
+
+if echo "$changed" | grep -q '^client/'; then
+  echo "→ client: typecheck + lint"
+  npm --prefix client run typecheck
+  npm --prefix client run lint
+fi
+
+if echo "$changed" | grep -q '^server/'; then
+  echo "→ server: typecheck + lint + test"
+  npm --prefix server run typecheck
+  npm --prefix server run lint
+  npm --prefix server run test
+fi
