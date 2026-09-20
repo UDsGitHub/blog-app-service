@@ -2,10 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { PrismaService } from '../prisma.service';
-import { Article } from './entities/article.entity';
 import slug from 'slug';
 import { ArticleStatus } from '../generated/prisma/enums';
 import { FindArticlesResponseDto } from './dto/find-articles.dto';
+import { Article } from '../generated/prisma/client';
 
 @Injectable()
 export class ArticleService {
@@ -46,7 +46,7 @@ export class ArticleService {
     } else {
       const results = await this.prisma.$queryRaw<Article[]>`
         select 
-          a.id, a.title, a.slug, a.body, a.created_at as "createdAt", a.updated_at as "updatedAt"
+          a.id, a.title, a.slug, a.body, a.status, a.created_at as "createdAt", a.updated_at as "updatedAt"
         from 
           article a, 
           plainto_tsquery('english', ${search}) as q 
@@ -91,6 +91,7 @@ export class ArticleService {
 
     await this.findById(id);
 
+    updateData['updatedAt'] = new Date();
     if (updateArticleDto.title) {
       const updatedSlug = await this.getSlug(updateArticleDto.title, id);
       updateData['slug'] = updatedSlug;

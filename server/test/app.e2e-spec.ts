@@ -4,9 +4,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma.service';
-import { Article } from '../src/article/entities/article.entity';
 import { FindArticlesResponseDto } from '../src/article/dto/find-articles.dto';
-import { ArticleStatus } from '../src/generated/prisma/client';
+import { Article, ArticleStatus } from '../src/generated/prisma/client';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -65,10 +64,14 @@ describe('AppController (e2e)', () => {
         .send({ title: expectedTitle, status: 'PUBLISHED' })
         .expect(200);
       const updatedArticle = updateArticleRes.body as Article;
+      console.log(updatedArticle);
       expect(updatedArticle.body).toEqual(createdArticle.body);
       expect(updatedArticle.title).toEqual(expectedTitle);
       expect(updatedArticle.slug).toEqual(expectedSlug);
       expect(updatedArticle.status).toEqual('PUBLISHED');
+      expect(updatedArticle.updatedAt?.getSeconds()).toBeGreaterThan(
+        createdArticle.createdAt.getSeconds(),
+      );
 
       await request(app.getHttpServer())
         .delete(`/articles/${createdArticle.id}`)

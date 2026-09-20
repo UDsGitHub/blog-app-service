@@ -13,7 +13,7 @@ enum ArticleStatus {
   ARCHIVED
 }
 
-model article {
+model Article {
   id String @db.Uuid @default(dbgenerated("gen_random_uuid()")) @id
   title String @db.VarChar(150)
   slug String @db.VarChar(255) @unique
@@ -24,5 +24,6 @@ model article {
   updatedAt DateTime? @db.Timestamptz @map("updated_at")
 
   @@index([searchVector], map: "idx_article_search_vector", type: Gin)
+  @@map("article")
 }
 

@@ -18,16 +18,13 @@ import {
   FindArticlesQueryDto,
   FindArticlesResponseDto,
 } from './dto/find-articles.dto';
-import { Article } from './entities/article.entity';
+import { Article } from '../generated/prisma/client';
 
 @Controller('articles')
 export class ArticleController {
   constructor(private readonly articleService: ArticleService) {}
 
   @Post()
-  @ApiResponse({
-    type: Article,
-  })
   async createArticle(
     @Body() createArticleDto: CreateArticleDto,
   ): Promise<Article> {
@@ -36,8 +33,7 @@ export class ArticleController {
 
   @Get()
   @ApiResponse({
-    type: Article,
-    isArray: true,
+    type: FindArticlesResponseDto,
   })
   async findArticles(
     @Query() query: FindArticlesQueryDto,
@@ -56,17 +52,11 @@ export class ArticleController {
   }
 
   @Get(':slug')
-  @ApiResponse({
-    type: Article,
-  })
-  async findArticle(@Param('slug') slug: string): Promise<Article | null> {
+  async findArticle(@Param('slug') slug: string) {
     return this.articleService.findBySlug(slug);
   }
 
   @Patch(':id')
-  @ApiResponse({
-    type: Article,
-  })
   updateArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateArticleDto: UpdateArticleDto,
@@ -87,9 +77,6 @@ export class ArticleController {
   }
 
   @Delete(':id')
-  @ApiResponse({
-    type: Article,
-  })
   removeArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<Article> {

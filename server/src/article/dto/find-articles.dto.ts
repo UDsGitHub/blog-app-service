@@ -10,8 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { ArticleStatus } from '../../generated/prisma/client';
-import { Article } from '../entities/article.entity';
+import { Article, ArticleStatus } from '../../generated/prisma/client';
 
 export class FindArticlesQueryDto {
   @IsOptional()

@@ -151,13 +151,15 @@ describe('ArticleService', () => {
   });
 
   it('updates title and slug', async () => {
+    const createdAt = new Date('2026-09-15');
+    const updatedAt = new Date('2026-09-16');
     const expectedReturnValue = {
       id: '2',
       title: 'title-2',
       slug: 'title-2',
       body: 'body',
-      createdAt: 1788970361747,
-      updatedAt: 1788970361748,
+      createdAt,
+      updatedAt,
     };
 
     prisma.article.count.mockResolvedValueOnce(0);
@@ -167,21 +169,26 @@ describe('ArticleService', () => {
 
     expect(prisma.article.update).toHaveBeenCalledWith({
       where: { id: '2' },
-      data: { title: 'title-2', slug: 'title-2' },
+      data: {
+        title: 'title-2',
+        slug: 'title-2',
+        updatedAt: expect.any(Date) as Date,
+      },
     });
     expect(returnValue).toBe(expectedReturnValue);
     expect(returnValue.slug).toBe('title-2');
-    expect(returnValue.updatedAt).toBe(1788970361748);
   });
 
   it('updates article body only', async () => {
+    const createdAt = new Date('2026-09-15');
+    const updatedAt = new Date('2026-09-16');
     const expectedReturnValue = {
       id: '2',
       title: 'title',
       slug: 'title',
       body: 'not body',
-      createdAt: 1788970361747,
-      updatedAt: 1788970361748,
+      createdAt,
+      updatedAt,
     };
 
     prisma.article.count.mockResolvedValueOnce(0);
@@ -191,11 +198,10 @@ describe('ArticleService', () => {
 
     expect(prisma.article.update).toHaveBeenCalledWith({
       where: { id: '2' },
-      data: { body: 'not body' },
+      data: { body: 'not body', updatedAt: expect.any(Date) as Date },
     });
     expect(returnValue).toBe(expectedReturnValue);
     expect(returnValue.slug).toBe('title');
-    expect(returnValue.updatedAt).toBe(1788970361748);
   });
 
   it('deletes article by id', async () => {
@@ -204,7 +210,7 @@ describe('ArticleService', () => {
       title: 'title-2',
       slug: 'title-2',
       body: 'body',
-      createdAt: 1788970361747,
+      createdAt: new Date(),
     };
 
     prisma.article.delete.mockResolvedValue(expectedReturnValue);

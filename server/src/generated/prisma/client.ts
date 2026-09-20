@@ -40,7 +40,7 @@ export type PrismaClient<LogOpts extends Prisma.LogLevel = never, OmitOpts exten
 export { Prisma }
 
 /**
- * Model article
+ * Model Article
  * 
  */
-export type article = Prisma.articleModel
+export type Article = Prisma.ArticleModel
