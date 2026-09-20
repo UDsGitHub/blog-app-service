@@ -45,13 +45,29 @@ describe('ArticleController', () => {
 
   it('calls app.service.findAll()', async () => {
     await controller.findArticles({ limit: 25 });
-    expect(appService.findAll).toHaveBeenCalledWith(25, undefined, undefined);
+    expect(appService.findAll).toHaveBeenCalledWith(
+      25,
+      undefined,
+      undefined,
+      undefined,
+    );
   });
 
   it('calls app.service.findAll() with pagination args', async () => {
     const cursorId = crypto.randomUUID();
-    await controller.findArticles({ cursorId, limit: 25 });
-    expect(appService.findAll).toHaveBeenCalledWith(25, cursorId, undefined);
+    const expected = {
+      data: [{ id: '1', title: 'title' }],
+      hasMore: false,
+    };
+    appService.findAll.mockResolvedValue(expected);
+    const response = await controller.findArticles({ cursorId, limit: 25 });
+    expect(appService.findAll).toHaveBeenCalledWith(
+      25,
+      cursorId,
+      undefined,
+      undefined,
+    );
+    expect(response).toEqual(expected);
   });
 
   it('calls app.service.findBySlug()', async () => {

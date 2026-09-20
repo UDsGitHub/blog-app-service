@@ -4,6 +4,8 @@ import { UpdateArticleDto } from './dto/update-article.dto';
 import { PrismaService } from '../prisma.service';
 import { Article } from './entities/article.entity';
 import slug from 'slug';
+import { ArticleStatus } from '../generated/prisma/enums';
+import { FindArticlesResponseDto } from './dto/find-articles.dto';
 
 @Injectable()
 export class ArticleService {
@@ -17,25 +19,42 @@ export class ArticleService {
     });
   }
 
-  async findAll(limit: number, cursorId?: string, search?: string) {
+  async findAll(
+    limit: number,
+    cursorId?: string,
+    search?: string,
+    status?: ArticleStatus,
+  ): Promise<FindArticlesResponseDto> {
     const query = {
       orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
-      take: limit,
+      take: limit + 1,
     };
     if (cursorId) {
       query['cursor'] = { id: cursorId };
       query['skip'] = 1;
     }
+    if (status) {
+      console.log('status passed = ', status);
+      query['where'] = { status: { equals: status } };
+    }
     if (!search?.trim()) {
-      return this.prisma.article.findMany(query);
+      const results = await this.prisma.article.findMany(query);
+      return {
+        data: results.slice(0, limit),
+        hasMore: results.length > limit,
+      };
     } else {
-      return this.prisma.$queryRaw<Article[]>`
+      const results = await this.prisma.$queryRaw<Article[]>`
         select 
           a.id, a.title, a.slug, a.body, a.created_at as "createdAt", a.updated_at as "updatedAt"
         from 
           article a, 
           plainto_tsquery('english', ${search}) as q 
         where search_vector @@ q order by ts_rank(search_vector, q) desc, a.created_at desc, a.id desc limit ${limit};`;
+      return {
+        data: results,
+        hasMore: false,
+      };
     }
   }
 

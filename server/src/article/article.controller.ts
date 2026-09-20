@@ -14,7 +14,10 @@ import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { ApiResponse } from '@nestjs/swagger';
-import { FindArticlesQueryDto } from './dto/find-articles.dto';
+import {
+  FindArticlesQueryDto,
+  FindArticlesResponseDto,
+} from './dto/find-articles.dto';
 import { Article } from './entities/article.entity';
 
 @Controller('articles')
@@ -36,7 +39,9 @@ export class ArticleController {
     type: Article,
     isArray: true,
   })
-  async findArticles(@Query() query: FindArticlesQueryDto): Promise<Article[]> {
+  async findArticles(
+    @Query() query: FindArticlesQueryDto,
+  ): Promise<FindArticlesResponseDto> {
     if (query.cursorId && query.search) {
       throw new BadRequestException(
         'cursorId cannot be set when passing search term.',
@@ -46,6 +51,7 @@ export class ArticleController {
       query.limit,
       query.cursorId,
       query.search,
+      query.status,
     );
   }
 
@@ -68,7 +74,10 @@ export class ArticleController {
     if (
       (updateArticleDto?.title === undefined ||
         updateArticleDto?.title === null) &&
-      (updateArticleDto?.body === undefined || updateArticleDto?.body === null)
+      (updateArticleDto?.body === undefined ||
+        updateArticleDto?.body === null) &&
+      (updateArticleDto?.status === undefined ||
+        updateArticleDto?.status === null)
     ) {
       throw new BadRequestException(
         'At least one field is required to update the article',

@@ -1,5 +1,17 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
+import { ArticleStatus } from '../../generated/prisma/client';
+import { Article } from '../entities/article.entity';
 
 export class FindArticlesQueryDto {
   @IsOptional()
@@ -16,4 +28,16 @@ export class FindArticlesQueryDto {
   @Min(1)
   @Max(100)
   limit: number = 25;
+
+  @IsOptional()
+  @IsEnum(ArticleStatus)
+  status?: ArticleStatus = ArticleStatus.PUBLISHED;
+}
+
+export class FindArticlesResponseDto {
+  @IsArray()
+  data: Article[] = [];
+
+  @IsBoolean()
+  hasMore: boolean = false;
 }

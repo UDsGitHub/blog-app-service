@@ -101,7 +101,7 @@ describe('ArticleService', () => {
   });
 
   it('returns all articles', async () => {
-    prisma.article.findMany.mockResolvedValue([
+    const expectedArticles = [
       {
         id: '1',
         title: 'title',
@@ -116,11 +116,17 @@ describe('ArticleService', () => {
         body: 'body',
         createdAt: 1788970361747,
       },
-    ]);
+    ];
+    const expected = {
+      data: expectedArticles,
+      hasMore: false,
+    };
+    prisma.article.findMany.mockResolvedValue(expectedArticles);
 
     const returnValue = await service.findAll(25);
 
-    expect(returnValue).toHaveLength(2);
+    expect(returnValue).toEqual(expected);
+    expect(returnValue.data).toHaveLength(2);
   });
 
   it('returns article by slug', async () => {
