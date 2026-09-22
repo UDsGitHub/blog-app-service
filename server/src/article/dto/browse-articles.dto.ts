@@ -11,10 +11,10 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { Article, ArticleStatus } from '../../generated/prisma/client';
+import { ArticleStatus } from '../../generated/prisma/client';
 import { ArticlePreview } from '../article.types';
 
-export class FindArticlesQueryDto {
+export class BrowseArticlesQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
@@ -45,17 +45,9 @@ export class FindArticlesQueryDto {
   endDate?: Date;
 }
 
-export class FindArticlesResponseDto {
+export class BrowseArticlesResponseDto {
   @IsArray()
   data: ArticlePreview[] = [];
-
-  @IsBoolean()
-  hasMore: boolean = false;
-}
-
-export class FindArticlesWithSearchResponseDto {
-  @IsArray()
-  data: Article[] = [];
 
   @IsBoolean()
   hasMore: boolean = false;

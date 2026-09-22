@@ -8,19 +8,21 @@ import { UpdateArticleDto } from './dto/update-article.dto';
 import { PrismaService } from '../prisma.service';
 import slug from 'slug';
 import { ArticleStatus } from '../generated/prisma/enums';
-import { FindArticlesResponseDto } from './dto/find-articles.dto';
-import { Article, Prisma } from '../generated/prisma/client';
-import { ArticlePreview } from './article.types';
+import { BrowseArticlesResponseDto } from './dto/browse-articles.dto';
+import { Prisma } from '../generated/prisma/client';
+import { ArticlePreview, ArticleSearchPreview } from './article.types';
+import removeMd from 'remove-markdown';
+import { SearchArticlesResponseDto } from './dto/search-articles.dto';
 
 @Injectable()
 export class ArticleService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createArticleDto: CreateArticleDto) {
-    const { title, body, status } = createArticleDto;
+    const { title, body, excerpt, status } = createArticleDto;
 
     const titleSlug = await this.getSlug(title);
-    const createData = { title, body, slug: titleSlug, status };
+    const createData = { title, body, slug: titleSlug, excerpt, status };
     if (status === ArticleStatus.PUBLISHED) {
       createData['publishedAt'] = new Date();
     }
@@ -30,19 +32,24 @@ export class ArticleService {
     });
   }
 
-  async findAll(
+  async browse(
     limit: number,
     cursorId?: string,
-    search?: string,
     status?: ArticleStatus,
     startDate?: Date,
     endDate?: Date,
-  ): Promise<FindArticlesResponseDto> {
-    if (search?.trim()) {
-      return this.searchArticles(limit, search, status, startDate, endDate);
-    } else {
-      return this.browseArticles(limit, cursorId, status, startDate, endDate);
-    }
+  ): Promise<BrowseArticlesResponseDto> {
+    return this.browseArticles(limit, cursorId, status, startDate, endDate);
+  }
+
+  async search(
+    limit: number,
+    search: string,
+    status?: ArticleStatus,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<SearchArticlesResponseDto> {
+    return this.searchArticles(limit, search, status, startDate, endDate);
   }
 
   async findBySlug(slug: string) {
@@ -97,11 +104,10 @@ export class ArticleService {
 
     const article = await this.findById(id);
     // set publishedAt once if article switches from draft to published
-    if (
+    const draftToPublished =
       updateData?.status === ArticleStatus.PUBLISHED &&
-      article.status === ArticleStatus.DRAFT &&
-      !article.publishedAt
-    ) {
+      article.status === ArticleStatus.DRAFT;
+    if (draftToPublished && !article.publishedAt) {
       updateData['publishedAt'] = new Date();
     }
 
@@ -175,14 +181,6 @@ export class ArticleService {
     return uniqueSlug;
   }
 
-  private getFilterDateColumn(
-    status?: ArticleStatus,
-  ): 'publishedAt' | 'createdAt' | null {
-    if (!status) return null;
-    if (status === ArticleStatus.DRAFT) return 'createdAt';
-    return 'publishedAt';
-  }
-
   private async browseArticles(
     limit: number,
     cursorId?: string,
@@ -219,8 +217,9 @@ export class ArticleService {
     const results = (
       await this.prisma.article.findMany(query)
     ).map<ArticlePreview>((article) => {
-      const { body, ...rest } = article;
-      return rest;
+      const { body, excerpt, ...rest } = article;
+      const finalExcerpt = excerpt?.trim() || this.getExcerpt(body);
+      return { ...rest, excerpt: finalExcerpt };
     });
     return {
       data: results.slice(0, limit),
@@ -258,16 +257,15 @@ export class ArticleService {
       }
     }
 
-    const results = await this.prisma.$queryRaw<Article[]>`
+    const results = await this.prisma.$queryRaw<ArticleSearchPreview[]>`
         select 
           a.id, 
           a.title, 
           a.slug,  
           a.status, 
-          a.excerpt, 
           a.created_at as "createdAt", 
           a.updated_at as "updatedAt",
-          ts_headline('english', a.body, q) as body
+          ts_headline('english', a.body, q) as headline
         from 
           article a, 
           plainto_tsquery('english', ${search}) as q 
@@ -279,10 +277,30 @@ export class ArticleService {
             a.created_at desc, 
             a.id desc 
           limit ${limit};`;
-
     return {
       data: results,
       hasMore: false,
     };
+  }
+
+  private getFilterDateColumn(
+    status?: ArticleStatus,
+  ): 'publishedAt' | 'createdAt' | null {
+    if (!status) return null;
+    if (status === ArticleStatus.DRAFT) return 'createdAt';
+    return 'publishedAt';
+  }
+
+  private getExcerpt(body: string, max = 160): string {
+    const plain = removeMd(body, { useImgAltText: false })
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (plain.length <= max) return plain;
+
+    const sliced = plain.slice(0, max);
+    const lastSpace = sliced.lastIndexOf(' ');
+    const trimSliced = lastSpace > 0 ? sliced.slice(0, lastSpace) : sliced;
+    return `${trimSliced.trimEnd()}...`;
   }
 }

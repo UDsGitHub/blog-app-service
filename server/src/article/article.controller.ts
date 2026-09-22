@@ -15,10 +15,14 @@ import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { ApiResponse } from '@nestjs/swagger';
 import {
-  FindArticlesQueryDto,
-  FindArticlesResponseDto,
-} from './dto/find-articles.dto';
+  BrowseArticlesQueryDto,
+  BrowseArticlesResponseDto,
+} from './dto/browse-articles.dto';
 import { Article, ArticleStatus } from '../generated/prisma/client';
+import {
+  SearchArticlesQueryDto,
+  SearchArticlesResponseDto,
+} from './dto/search-articles.dto';
 
 @Controller('articles')
 export class ArticleController {
@@ -39,25 +43,41 @@ export class ArticleController {
 
   @Get()
   @ApiResponse({
-    type: FindArticlesResponseDto,
+    type: BrowseArticlesResponseDto,
   })
-  async findArticles(
-    @Query() query: FindArticlesQueryDto,
-  ): Promise<FindArticlesResponseDto> {
-    if (query.cursorId && query.search) {
-      throw new BadRequestException(
-        'cursorId cannot be set when passing search term.',
-      );
-    }
+  async browseArticles(
+    @Query() query: BrowseArticlesQueryDto,
+  ): Promise<BrowseArticlesResponseDto> {
     if ((query.startDate || query.endDate) && !query.status) {
       throw new BadRequestException(
         'status is required when filtering by startDate or endDate',
       );
     }
 
-    return this.articleService.findAll(
+    return this.articleService.browse(
       query.limit,
       query.cursorId,
+      query.status,
+      query.startDate,
+      query.endDate,
+    );
+  }
+
+  @Get('/search')
+  @ApiResponse({
+    type: SearchArticlesResponseDto,
+  })
+  async searchArticles(
+    @Query() query: SearchArticlesQueryDto,
+  ): Promise<SearchArticlesResponseDto> {
+    if ((query.startDate || query.endDate) && !query.status) {
+      throw new BadRequestException(
+        'status is required when filtering by startDate or endDate',
+      );
+    }
+
+    return this.articleService.search(
+      query.limit,
       query.search,
       query.status,
       query.startDate,

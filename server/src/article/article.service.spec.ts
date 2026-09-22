@@ -42,15 +42,17 @@ describe('ArticleService', () => {
   });
 
   describe('default flow', () => {
-    it('creates an article with a unique slug', async () => {
+    it('creates an article', async () => {
       const title = 'My First Article';
       const body = 'Hello World';
+      const excerpt = 'Hello World';
       const slug = 'my-first-article';
       const expectedReturnValue = {
         id: '1',
         title,
         slug,
         body,
+        excerpt,
         createdAt: Date.now(),
       };
 
@@ -60,6 +62,7 @@ describe('ArticleService', () => {
       const returnValue = await service.create({
         title,
         body: 'Hello World',
+        excerpt: 'Hello World',
         status: ArticleStatus.DRAFT,
       });
 
@@ -68,6 +71,7 @@ describe('ArticleService', () => {
           title,
           slug,
           body,
+          excerpt,
           status: ArticleStatus.DRAFT,
         },
       });
@@ -195,7 +199,7 @@ describe('ArticleService', () => {
           title: 'title',
           slug: 'title',
           status: ArticleStatus.DRAFT,
-          excerpt: '',
+          excerpt: 'body',
           body: 'body',
           createdAt: new Date(),
         },
@@ -211,16 +215,29 @@ describe('ArticleService', () => {
       ];
       prisma.article.findMany.mockResolvedValue(expectedArticles);
 
-      const response = await service.findAll(25);
+      const response = await service.browse(25);
 
       expect(prisma.article.findMany).toHaveBeenCalledWith({
         where: {},
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 25 + 1,
       });
-      response.data.forEach((article) =>
-        expect(article).not.toHaveProperty('body'),
-      );
+      expect(response.data[0]).toEqual({
+        id: expectedArticles[0].id,
+        title: expectedArticles[0].title,
+        slug: expectedArticles[0].slug,
+        status: expectedArticles[0].status,
+        excerpt: expectedArticles[0].excerpt,
+        createdAt: expectedArticles[0].createdAt,
+      });
+      expect(response.data[1]).toEqual({
+        id: expectedArticles[1].id,
+        title: expectedArticles[1].title,
+        slug: expectedArticles[1].slug,
+        status: expectedArticles[1].status,
+        excerpt: expectedArticles[1].body,
+        createdAt: expectedArticles[1].createdAt,
+      });
     });
 
     it('returns all articles - filters: [cursorId]', async () => {
@@ -242,7 +259,7 @@ describe('ArticleService', () => {
       ];
       prisma.article.findMany.mockResolvedValue(expectedArticles);
 
-      await service.findAll(25, 'uuid');
+      await service.browse(25, 'uuid');
 
       expect(prisma.article.findMany).toHaveBeenCalledWith({
         where: {},
@@ -272,7 +289,7 @@ describe('ArticleService', () => {
       ];
       prisma.article.findMany.mockResolvedValue(expectedArticles);
 
-      await service.findAll(25, 'uuid', undefined, ArticleStatus.DRAFT);
+      await service.browse(25, 'uuid', ArticleStatus.DRAFT);
 
       expect(prisma.article.findMany).toHaveBeenCalledWith({
         where: { status: ArticleStatus.DRAFT },
@@ -289,12 +306,14 @@ describe('ArticleService', () => {
           id: '1',
           title: 'title',
           slug: 'title',
+          excerpt: '',
           createdAt: 1788970361746,
         },
         {
           id: '2',
           title: 'title',
           slug: 'title-1',
+          excerpt: '',
           createdAt: 1788970361747,
         },
       ];
@@ -305,10 +324,9 @@ describe('ArticleService', () => {
       prisma.article.findMany.mockResolvedValue(expectedArticles);
 
       const startDate = new Date();
-      const returnValue = await service.findAll(
+      const returnValue = await service.browse(
         25,
         'uuid',
-        undefined,
         ArticleStatus.PUBLISHED,
         startDate,
       );
@@ -333,12 +351,14 @@ describe('ArticleService', () => {
           id: '1',
           title: 'title',
           slug: 'title',
+          excerpt: '',
           createdAt: 1788970361746,
         },
         {
           id: '2',
           title: 'title',
           slug: 'title-1',
+          excerpt: '',
           createdAt: 1788970361747,
         },
       ];
@@ -350,10 +370,9 @@ describe('ArticleService', () => {
 
       const startDate = new Date('2026-09-19');
       const endDate = new Date('2026-09-20');
-      const returnValue = await service.findAll(
+      const returnValue = await service.browse(
         25,
         'uuid',
-        undefined,
         ArticleStatus.PUBLISHED,
         startDate,
         endDate,
@@ -371,6 +390,43 @@ describe('ArticleService', () => {
       });
       expect(returnValue).toEqual(expected);
       expect(returnValue.data).toHaveLength(2);
+    });
+
+    it('derives excerpt for article body', async () => {
+      const expectedArticles = [
+        {
+          id: '1',
+          title: 'title',
+          slug: 'title',
+          status: ArticleStatus.DRAFT,
+          body: '# Hello\n\nworld',
+          excerpt: '',
+          createdAt: 1788970361746,
+        },
+        {
+          id: '2',
+          title: 'title',
+          slug: 'title-1',
+          status: ArticleStatus.DRAFT,
+          body: '## Lorem ipsum dolor sit amet\n\n consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec.',
+          excerpt: '',
+          createdAt: 1788970361747,
+        },
+      ];
+      prisma.article.findMany.mockResolvedValue(expectedArticles);
+
+      const response = await service.browse(25);
+
+      expect(prisma.article.findMany).toHaveBeenCalledWith({
+        where: {},
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 25 + 1,
+      });
+      expect(response.data[0].id).toBe(expectedArticles[0].id);
+      expect(response.data[0].excerpt).toBe('Hello world');
+      expect(response.data[1].id).toBe(expectedArticles[1].id);
+      expect(response.data[1].excerpt!.length).toBeLessThanOrEqual(163);
+      expect(/(\w+)\.\.\.$/.test(response.data[1].excerpt ?? '')).toBe(true);
     });
 
     it('returns article by slug', async () => {

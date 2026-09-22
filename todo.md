@@ -1,7 +1,7 @@
 - [ ] start buidling out frontend
 - [ ] add redis caching to the backend
-- [ ] update unit tests and e2e tests based on current checked changes for API 
-- [ ] include excerpt in select for non-search article list and exclude body. derive excerpt from body if excerpt is empty
+- [x] update unit tests and e2e tests based on current checked changes for API 
+- [x] include excerpt in select for non-search article list and exclude body. derive excerpt from body if excerpt is empty
 
 Plan: see PLAN.md. API first, then UI.
 
@@ -11,16 +11,16 @@ Plan: see PLAN.md. API first, then UI.
 - [x] remove console.log in article.service findAll
 - [x] migration: add `excerpt` (nullable varchar 300) and `publishedAt` (nullable timestamptz)
 - [x] set publishedAt on first transition to PUBLISHED (never reset)
-- [ ] migration: `article_slug_history` (slug unique, article_id fk cascade, created_at)
+- [x] migration: `article_slug_history` (slug unique, article_id fk cascade, created_at)
 - [x] slug history: record old slug when a published article's title changes; getSlug checks both tables; findBySlug falls back to history
 - [x] get article by id endpoint for the studio (decide path)
-- [ ] list responses omit body, return excerpt (stored or derived from markdown)
+- [x] list responses omit body, return excerpt (stored or derived from markdown)
 - [x] search results return ts_headline snippet instead of body
 - [x] list ordering: PUBLISHED by publishedAt desc, others by createdAt desc (decide)
 - [x] date range filter (from/to on publishedAt)
 - [ ] webhook module: signed payload, WEBHOOK_URLS env, publish-affecting events only
 - [ ] ETag + Cache-Control on list and detail
-- [ ] update tests for all of the above
+- [x] update tests for all of the above
 
 ## Portfolio (~/code/apps/portfolio)
 - [ ] revalidate route handler: verify HMAC, revalidateTag('articles')

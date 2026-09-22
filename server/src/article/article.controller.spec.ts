@@ -12,7 +12,8 @@ describe('ArticleController', () => {
   let controller: ArticleController;
   const appService = {
     create: jest.fn(),
-    findAll: jest.fn(),
+    browse: jest.fn(),
+    search: jest.fn(),
     findBySlug: jest.fn(),
     findById: jest.fn(),
     update: jest.fn(),
@@ -46,12 +47,22 @@ describe('ArticleController', () => {
       expect(appService.create).toHaveBeenCalledWith(requestData);
     });
 
-    it('calls app.service.findAll()', async () => {
-      await controller.findArticles({ limit: 25 });
-      expect(appService.findAll).toHaveBeenCalledWith(
+    it('calls app.service.browse()', async () => {
+      await controller.browseArticles({ limit: 25 });
+      expect(appService.browse).toHaveBeenCalledWith(
         25,
         undefined,
         undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('calls app.service.search()', async () => {
+      await controller.searchArticles({ search: 'search', limit: 25 });
+      expect(appService.search).toHaveBeenCalledWith(
+        25,
+        'search',
         undefined,
         undefined,
         undefined,
@@ -64,12 +75,11 @@ describe('ArticleController', () => {
         data: [{ id: '1', title: 'title' }],
         hasMore: false,
       };
-      appService.findAll.mockResolvedValue(expected);
-      const response = await controller.findArticles({ cursorId, limit: 25 });
-      expect(appService.findAll).toHaveBeenCalledWith(
+      appService.browse.mockResolvedValue(expected);
+      const response = await controller.browseArticles({ cursorId, limit: 25 });
+      expect(appService.browse).toHaveBeenCalledWith(
         25,
         cursorId,
-        undefined,
         undefined,
         undefined,
         undefined,

@@ -4,11 +4,9 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma.service';
-import {
-  FindArticlesResponseDto,
-  FindArticlesWithSearchResponseDto,
-} from '../src/article/dto/find-articles.dto';
+import { BrowseArticlesResponseDto } from '../src/article/dto/browse-articles.dto';
 import { Article, ArticleStatus } from '../src/generated/prisma/client';
+import { SearchArticlesResponseDto } from '../src/article/dto/search-articles.dto';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -91,7 +89,7 @@ describe('AppController (e2e)', () => {
       const response = await request(app.getHttpServer())
         .get('/articles?status=PUBLISHED')
         .expect(200);
-      const articles = response.body as FindArticlesResponseDto;
+      const articles = response.body as BrowseArticlesResponseDto;
       expect(articles.data).toHaveLength(0);
     });
 
@@ -127,7 +125,12 @@ describe('AppController (e2e)', () => {
           .post('/articles')
           .send({
             title: 'first article',
-            body: 'hello world',
+            body: `
+            ## Images
+
+            ![Minion](https://octodex.github.com/images/minion.png)
+            ![Stormtroopocat](https://octodex.github.com/images/stormtroopocat.jpg "The Stormtroopocat")
+            `,
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
@@ -135,7 +138,14 @@ describe('AppController (e2e)', () => {
           .post('/articles')
           .send({
             title: 'second article',
-            body: 'hello world',
+            body: `
+            # h1 Heading 8-)
+            ## h2 Heading
+            ### h3 Heading
+            #### h4 Heading
+            ##### h5 Heading
+            ###### h6 Heading
+            `,
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
@@ -145,6 +155,7 @@ describe('AppController (e2e)', () => {
             title: 'third article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
+            excerpt: 'some excerpt',
           })
           .expect(201);
         const fourth = await request(app.getHttpServer())
@@ -160,13 +171,17 @@ describe('AppController (e2e)', () => {
         const article4 = fourth.body as Article;
 
         const getArticlesRes = await request(app.getHttpServer())
-          .get(`/articles?cursorId=${article4.id}&limit=2&status=DRAFT`)
+          .get(`/articles?cursorId=${article4.id}&limit=3&status=DRAFT`)
           .expect(200);
-        const articles = getArticlesRes.body as FindArticlesResponseDto;
-        expect(articles.data).toHaveLength(2);
-        expect(articles.hasMore).toBe(true);
+        const articles = getArticlesRes.body as BrowseArticlesResponseDto;
+        expect(articles.data).toHaveLength(3);
         expect(articles.data[0].id).toBe(article3.id);
-        expect(articles.data[0]['body']).not.toBeDefined();
+        expect(articles.data[0].excerpt).toBe('some excerpt');
+        expect(articles.data[2].excerpt).toBe('Images');
+        expect(articles.data[1].excerpt).toBe(
+          'h1 Heading 8-) h2 Heading h3 Heading h4 Heading h5 Heading h6 Heading',
+        );
+        articles.data.forEach((a) => expect(a).not.toHaveProperty('body'));
       });
 
       it('fetches next page', async () => {
@@ -206,10 +221,20 @@ describe('AppController (e2e)', () => {
         const article1 = first.body as Article;
         const article2 = second.body as Article;
 
-        const getArticlesRes = await request(app.getHttpServer())
+        // fetch and assert first page next cursorId
+        const firstPageRes = await request(app.getHttpServer())
+          .get(`/articles?limit=3&status=DRAFT`)
+          .expect(200);
+        const firstPageArticles =
+          firstPageRes.body as BrowseArticlesResponseDto;
+        expect(firstPageArticles.data[2].id).toBe(article2.id);
+        expect(firstPageArticles.hasMore).toBe(true);
+
+        // use cursorId to fetch next page
+        const secondPageRes = await request(app.getHttpServer())
           .get(`/articles?cursorId=${article2.id}&limit=3&status=DRAFT`)
           .expect(200);
-        const articles = getArticlesRes.body as FindArticlesResponseDto;
+        const articles = secondPageRes.body as BrowseArticlesResponseDto;
         expect(articles.data).toHaveLength(1);
         expect(articles.data[0].id).toBe(article1.id);
       });
@@ -260,7 +285,7 @@ describe('AppController (e2e)', () => {
         const getArticlesRes = await request(app.getHttpServer())
           .get(`/articles?limit=3&status=PUBLISHED`)
           .expect(200);
-        const articles = getArticlesRes.body as FindArticlesResponseDto;
+        const articles = getArticlesRes.body as BrowseArticlesResponseDto;
 
         // newest published first (first was published last)
         expect(articles.data.map((a) => a.id)).toEqual([
@@ -328,7 +353,7 @@ describe('AppController (e2e)', () => {
         const getArticlesRes = await request(app.getHttpServer())
           .get(`/articles?limit=3&status=ARCHIVED`)
           .expect(200);
-        const articles = getArticlesRes.body as FindArticlesResponseDto;
+        const articles = getArticlesRes.body as BrowseArticlesResponseDto;
 
         // newest published first (first was published last)
         expect(articles.data.map((a) => a.id)).toEqual([
@@ -337,6 +362,56 @@ describe('AppController (e2e)', () => {
           article3.id,
         ]);
       });
+
+      // it('fetches articles - derived excerpt', async () => {
+      //   const first = await request(app.getHttpServer())
+      //     .post('/articles')
+      //     .send({
+      //       title: 'first article',
+      //       body: 'hello world',
+      //       status: ArticleStatus.DRAFT,
+      //     })
+      //     .expect(201);
+
+      //   const article1 = first.body as Article;
+
+      //   // publish in reverse order so publishedAt ranking != createdAt ranking
+      //   await request(app.getHttpServer())
+      //     .patch(`/articles/${article3.id}`)
+      //     .send({ status: ArticleStatus.PUBLISHED })
+      //     .expect(200);
+      //   await request(app.getHttpServer())
+      //     .patch(`/articles/${article3.id}`)
+      //     .send({ status: ArticleStatus.ARCHIVED })
+      //     .expect(200);
+      //   await request(app.getHttpServer())
+      //     .patch(`/articles/${article2.id}`)
+      //     .send({ status: ArticleStatus.PUBLISHED })
+      //     .expect(200);
+      //   await request(app.getHttpServer())
+      //     .patch(`/articles/${article2.id}`)
+      //     .send({ status: ArticleStatus.ARCHIVED })
+      //     .expect(200);
+      //   await request(app.getHttpServer())
+      //     .patch(`/articles/${article1.id}`)
+      //     .send({ status: ArticleStatus.PUBLISHED })
+      //     .expect(200);
+      //   await request(app.getHttpServer())
+      //     .patch(`/articles/${article1.id}`)
+      //     .send({ status: ArticleStatus.ARCHIVED })
+      //     .expect(200);
+      //   const getArticlesRes = await request(app.getHttpServer())
+      //     .get(`/articles?limit=3&status=ARCHIVED`)
+      //     .expect(200);
+      //   const articles = getArticlesRes.body as FindArticlesResponseDto;
+
+      //   // newest published first (first was published last)
+      //   expect(articles.data.map((a) => a.id)).toEqual([
+      //     article1.id,
+      //     article2.id,
+      //     article3.id,
+      //   ]);
+      // });
     });
 
     describe('search articles - search term', () => {
@@ -369,22 +444,26 @@ describe('AppController (e2e)', () => {
 
         const getArticlesRes = await request(app.getHttpServer())
           .get(
-            `/articles?search=${encodeURIComponent(searchTerm)}&limit=3&status=DRAFT`,
+            `/articles/search?search=${encodeURIComponent(searchTerm)}&limit=3&status=DRAFT`,
           )
           .expect(200);
         const { data: articles } =
-          getArticlesRes.body as FindArticlesWithSearchResponseDto;
+          getArticlesRes.body as SearchArticlesResponseDto;
 
         expect(articles).toHaveLength(2);
         expect(articles[1].id).toBe(article2.id);
+        articles.forEach((a) =>
+          expect(a).not.toHaveProperty(['body', 'excerpt']),
+        );
+        expect(articles[1].id).toBe(article2.id);
         expect(
-          articles[1].body.includes(
+          articles[1].headline.includes(
             `<b>${searchTerm.split(' ').join('</b> <b>')}</b>`,
           ),
         ).toBe(true);
         expect(articles[0].id).toBe(article3.id);
         expect(
-          articles[0].body.includes(
+          articles[0].headline.includes(
             `<b>${searchTerm.split(' ').join('</b> <b>')}</b>`,
           ),
         ).toBe(true);
@@ -402,9 +481,6 @@ describe('AppController (e2e)', () => {
         .expect(400);
       await request(app.getHttpServer())
         .get(`/articles?cursorId=${crypto.randomUUID()}&limit=string`)
-        .expect(400);
-      await request(app.getHttpServer())
-        .get(`/articles?cursorId=${crypto.randomUUID()}&limit=3&search=frog`)
         .expect(400);
       await request(app.getHttpServer())
         .get(
@@ -511,7 +587,7 @@ describe('AppController (e2e)', () => {
       const getArticlesRes = await request(app.getHttpServer())
         .get(`/articles?status=DRAFT`)
         .expect(200);
-      const { data } = getArticlesRes.body as FindArticlesResponseDto;
+      const { data } = getArticlesRes.body as BrowseArticlesResponseDto;
       const [secondArticle, firstArticle] = data;
 
       expect(firstArticle).toMatchObject({
