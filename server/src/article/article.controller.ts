@@ -13,7 +13,7 @@ import {
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiOkResponse } from '@nestjs/swagger';
 import {
   BrowseArticlesQueryDto,
   BrowseArticlesResponseDto,
@@ -23,6 +23,7 @@ import {
   SearchArticlesQueryDto,
   SearchArticlesResponseDto,
 } from './dto/search-articles.dto';
+import { ArticleEntity } from './article.entity';
 
 @Controller('articles')
 export class ArticleController {
@@ -42,7 +43,7 @@ export class ArticleController {
   }
 
   @Get()
-  @ApiResponse({
+  @ApiOkResponse({
     type: BrowseArticlesResponseDto,
   })
   async browseArticles(
@@ -64,7 +65,7 @@ export class ArticleController {
   }
 
   @Get('/search')
-  @ApiResponse({
+  @ApiOkResponse({
     type: SearchArticlesResponseDto,
   })
   async searchArticles(
@@ -86,16 +87,19 @@ export class ArticleController {
   }
 
   @Get('id/:id')
+  @ApiOkResponse({ type: ArticleEntity })
   async findById(@Param('id') id: string) {
     return this.articleService.findById(id);
   }
 
   @Get(':slug')
+  @ApiOkResponse({ type: ArticleEntity })
   async findBySlug(@Param('slug') slug: string) {
     return this.articleService.findBySlug(slug);
   }
 
   @Patch(':id')
+  @ApiOkResponse({ type: ArticleEntity })
   updateArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateArticleDto: UpdateArticleDto,
@@ -116,6 +120,7 @@ export class ArticleController {
   }
 
   @Delete(':id')
+  @ApiOkResponse({ type: ArticleEntity })
   removeArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<Article> {

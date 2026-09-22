@@ -13,6 +13,8 @@ import {
 } from 'class-validator';
 import { ArticleStatus } from '../../generated/prisma/enums';
 import { ArticleSearchPreview } from '../article.types';
+import { ApiProperty } from '@nestjs/swagger';
+import { ArticleSearchPreviewEntity } from '../article.entity';
 
 export class SearchArticlesQueryDto {
   @IsNotEmpty()
@@ -42,6 +44,7 @@ export class SearchArticlesQueryDto {
 }
 
 export class SearchArticlesResponseDto {
+  @ApiProperty({ type: [ArticleSearchPreviewEntity] })
   @IsArray()
   data: ArticleSearchPreview[] = [];
 

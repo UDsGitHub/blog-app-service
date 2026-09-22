@@ -426,7 +426,7 @@ describe('ArticleService', () => {
       expect(response.data[0].excerpt).toBe('Hello world');
       expect(response.data[1].id).toBe(expectedArticles[1].id);
       expect(response.data[1].excerpt!.length).toBeLessThanOrEqual(163);
-      expect(/(\w+)\.\.\.$/.test(response.data[1].excerpt ?? '')).toBe(true);
+      expect(/(\w+)(\.\.\.)$/.test(response.data[1].excerpt ?? '')).toBe(true);
     });
 
     it('returns article by slug', async () => {

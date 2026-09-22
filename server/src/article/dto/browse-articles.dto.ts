@@ -6,19 +6,16 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
-  IsString,
   IsUUID,
   Max,
   Min,
 } from 'class-validator';
 import { ArticleStatus } from '../../generated/prisma/client';
 import { ArticlePreview } from '../article.types';
+import { ApiProperty } from '@nestjs/swagger';
+import { ArticlePreviewEntity } from '../article.entity';
 
 export class BrowseArticlesQueryDto {
-  @IsOptional()
-  @IsString()
-  search?: string;
-
   @IsOptional()
   @IsUUID('4')
   cursorId?: string;
@@ -46,9 +43,11 @@ export class BrowseArticlesQueryDto {
 }
 
 export class BrowseArticlesResponseDto {
+  @ApiProperty({ type: [ArticlePreviewEntity] })
   @IsArray()
   data: ArticlePreview[] = [];
 
+  @ApiProperty()
   @IsBoolean()
   hasMore: boolean = false;
 }
