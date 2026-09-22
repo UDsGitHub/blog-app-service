@@ -44,3 +44,8 @@ export { Prisma }
  * 
  */
 export type Article = Prisma.ArticleModel
+/**
+ * Model ArticleSlugHistory
+ * 
+ */
+export type ArticleSlugHistory = Prisma.ArticleSlugHistoryModel

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsDate,
   IsEnum,
   IsInt,
   IsOptional,
@@ -11,6 +12,7 @@ import {
   Min,
 } from 'class-validator';
 import { Article, ArticleStatus } from '../../generated/prisma/client';
+import { ArticlePreview } from '../article.types';
 
 export class FindArticlesQueryDto {
   @IsOptional()
@@ -30,10 +32,28 @@ export class FindArticlesQueryDto {
 
   @IsOptional()
   @IsEnum(ArticleStatus)
-  status?: ArticleStatus = ArticleStatus.PUBLISHED;
+  status?: ArticleStatus;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  startDate?: Date;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  endDate?: Date;
 }
 
 export class FindArticlesResponseDto {
+  @IsArray()
+  data: ArticlePreview[] = [];
+
+  @IsBoolean()
+  hasMore: boolean = false;
+}
+
+export class FindArticlesWithSearchResponseDto {
   @IsArray()
   data: Article[] = [];
 

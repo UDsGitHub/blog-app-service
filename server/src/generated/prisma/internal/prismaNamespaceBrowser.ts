@@ -51,7 +51,8 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
-  Article: 'Article'
+  Article: 'Article',
+  ArticleSlugHistory: 'ArticleSlugHistory'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -76,11 +77,21 @@ export const ArticleScalarFieldEnum = {
   slug: 'slug',
   body: 'body',
   status: 'status',
+  excerpt: 'excerpt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  publishedAt: 'publishedAt'
 } as const
 
 export type ArticleScalarFieldEnum = (typeof ArticleScalarFieldEnum)[keyof typeof ArticleScalarFieldEnum]
+
+
+export const ArticleSlugHistoryScalarFieldEnum = {
+  articleId: 'articleId',
+  slug: 'slug'
+} as const
+
+export type ArticleSlugHistoryScalarFieldEnum = (typeof ArticleSlugHistoryScalarFieldEnum)[keyof typeof ArticleSlugHistoryScalarFieldEnum]
 
 
 export const SortOrder = {

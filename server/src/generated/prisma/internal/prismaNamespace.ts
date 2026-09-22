@@ -397,7 +397,8 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 
 export const ModelName = {
-  Article: 'Article'
+  Article: 'Article',
+  ArticleSlugHistory: 'ArticleSlugHistory'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -413,7 +414,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "article"
+    modelProps: "article" | "articleSlugHistory"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -491,6 +492,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ArticleSlugHistory: {
+      payload: Prisma.$ArticleSlugHistoryPayload<ExtArgs>
+      fields: Prisma.ArticleSlugHistoryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ArticleSlugHistoryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ArticleSlugHistoryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>
+        }
+        findFirst: {
+          args: Prisma.ArticleSlugHistoryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ArticleSlugHistoryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>
+        }
+        findMany: {
+          args: Prisma.ArticleSlugHistoryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>[]
+        }
+        create: {
+          args: Prisma.ArticleSlugHistoryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>
+        }
+        createMany: {
+          args: Prisma.ArticleSlugHistoryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ArticleSlugHistoryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>[]
+        }
+        delete: {
+          args: Prisma.ArticleSlugHistoryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>
+        }
+        update: {
+          args: Prisma.ArticleSlugHistoryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>
+        }
+        deleteMany: {
+          args: Prisma.ArticleSlugHistoryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ArticleSlugHistoryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ArticleSlugHistoryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>[]
+        }
+        upsert: {
+          args: Prisma.ArticleSlugHistoryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArticleSlugHistoryPayload>
+        }
+        aggregate: {
+          args: Prisma.ArticleSlugHistoryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateArticleSlugHistory>
+        }
+        groupBy: {
+          args: Prisma.ArticleSlugHistoryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ArticleSlugHistoryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ArticleSlugHistoryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ArticleSlugHistoryCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -536,11 +611,21 @@ export const ArticleScalarFieldEnum = {
   slug: 'slug',
   body: 'body',
   status: 'status',
+  excerpt: 'excerpt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  publishedAt: 'publishedAt'
 } as const
 
 export type ArticleScalarFieldEnum = (typeof ArticleScalarFieldEnum)[keyof typeof ArticleScalarFieldEnum]
+
+
+export const ArticleSlugHistoryScalarFieldEnum = {
+  articleId: 'articleId',
+  slug: 'slug'
+} as const
+
+export type ArticleSlugHistoryScalarFieldEnum = (typeof ArticleSlugHistoryScalarFieldEnum)[keyof typeof ArticleSlugHistoryScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -780,6 +865,7 @@ export interface PrismaClientOptionsWithAdapter extends PrismaClientBaseOptions 
 export type PrismaClientOptions = PrismaClientOptionsWithAccelerateUrl | PrismaClientOptionsWithAdapter
 export type GlobalOmitConfig = {
   article?: Prisma.ArticleOmit
+  articleSlugHistory?: Prisma.ArticleSlugHistoryOmit
 }
 
 /* Types for Logging */

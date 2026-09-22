@@ -18,7 +18,7 @@ import {
   FindArticlesQueryDto,
   FindArticlesResponseDto,
 } from './dto/find-articles.dto';
-import { Article } from '../generated/prisma/client';
+import { Article, ArticleStatus } from '../generated/prisma/client';
 
 @Controller('articles')
 export class ArticleController {
@@ -28,6 +28,12 @@ export class ArticleController {
   async createArticle(
     @Body() createArticleDto: CreateArticleDto,
   ): Promise<Article> {
+    if (createArticleDto.status === ArticleStatus.ARCHIVED) {
+      throw new BadRequestException(
+        'cannot create article with ARCHIVED status',
+      );
+    }
+
     return this.articleService.create(createArticleDto);
   }
 
@@ -43,16 +49,29 @@ export class ArticleController {
         'cursorId cannot be set when passing search term.',
       );
     }
+    if ((query.startDate || query.endDate) && !query.status) {
+      throw new BadRequestException(
+        'status is required when filtering by startDate or endDate',
+      );
+    }
+
     return this.articleService.findAll(
       query.limit,
       query.cursorId,
       query.search,
       query.status,
+      query.startDate,
+      query.endDate,
     );
   }
 
+  @Get('id/:id')
+  async findById(@Param('id') id: string) {
+    return this.articleService.findById(id);
+  }
+
   @Get(':slug')
-  async findArticle(@Param('slug') slug: string) {
+  async findBySlug(@Param('slug') slug: string) {
     return this.articleService.findBySlug(slug);
   }
 
