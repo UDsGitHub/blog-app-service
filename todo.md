@@ -2,11 +2,12 @@
 - [ ] add redis caching to the backend
 - [x] update unit tests and e2e tests based on current checked changes for API 
 - [x] include excerpt in select for non-search article list and exclude body. derive excerpt from body if excerpt is empty
+- [x] env file for container seems to be using my regular env not test env... adding envfilepath in app module gets the test env in for docker, but when i run the app, it uses test env instead of regular env
 
 Plan: see PLAN.md. API first, then UI.
 
 ## API
-- [ ] access key guard: no key = published only (list, search, by-slug 404 for non-published); key required for POST/PATCH/DELETE
+- [x] access key guard: no key = published only (list, search, by-slug 404 for non-published); key required for POST/PATCH/DELETE
 - [x] search sql filters by status
 - [x] remove console.log in article.service findAll
 - [x] migration: add `excerpt` (nullable varchar 300) and `publishedAt` (nullable timestamptz)

@@ -9,6 +9,8 @@ import {
   BadRequestException,
   ParseUUIDPipe,
   Query,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
@@ -24,12 +26,15 @@ import {
   SearchArticlesResponseDto,
 } from './dto/search-articles.dto';
 import { ArticleEntity } from './article.entity';
+import type { AuthenticatedRequest } from '../guard/authenticated-request.interface';
+import { AdminOnly } from '../guard/admin-only.decorator';
 
 @Controller('articles')
 export class ArticleController {
   constructor(private readonly articleService: ArticleService) {}
 
   @Post()
+  @AdminOnly(true)
   async createArticle(
     @Body() createArticleDto: CreateArticleDto,
   ): Promise<Article> {
@@ -47,8 +52,23 @@ export class ArticleController {
     type: BrowseArticlesResponseDto,
   })
   async browseArticles(
+    @Req() request: AuthenticatedRequest,
     @Query() query: BrowseArticlesQueryDto,
   ): Promise<BrowseArticlesResponseDto> {
+    if (!request.isAuthenticated && !query.status) {
+      throw new BadRequestException(
+        'status is a required field for unauthenticated users',
+      );
+    }
+
+    if (
+      !request.isAuthenticated &&
+      (query.status === ArticleStatus.DRAFT ||
+        query.status === ArticleStatus.ARCHIVED)
+    ) {
+      throw new UnauthorizedException();
+    }
+
     if ((query.startDate || query.endDate) && !query.status) {
       throw new BadRequestException(
         'status is required when filtering by startDate or endDate',
@@ -69,8 +89,23 @@ export class ArticleController {
     type: SearchArticlesResponseDto,
   })
   async searchArticles(
+    @Req() request: AuthenticatedRequest,
     @Query() query: SearchArticlesQueryDto,
   ): Promise<SearchArticlesResponseDto> {
+    if (!request.isAuthenticated && !query.status) {
+      throw new BadRequestException(
+        'status is a required field for unauthenticated users',
+      );
+    }
+
+    if (
+      !request.isAuthenticated &&
+      (query.status === ArticleStatus.DRAFT ||
+        query.status === ArticleStatus.ARCHIVED)
+    ) {
+      throw new UnauthorizedException();
+    }
+
     if ((query.startDate || query.endDate) && !query.status) {
       throw new BadRequestException(
         'status is required when filtering by startDate or endDate',
@@ -87,6 +122,7 @@ export class ArticleController {
   }
 
   @Get('id/:id')
+  @AdminOnly(true)
   @ApiOkResponse({ type: ArticleEntity })
   async findById(@Param('id') id: string) {
     return this.articleService.findById(id);
@@ -94,11 +130,15 @@ export class ArticleController {
 
   @Get(':slug')
   @ApiOkResponse({ type: ArticleEntity })
-  async findBySlug(@Param('slug') slug: string) {
-    return this.articleService.findBySlug(slug);
+  async findBySlug(
+    @Req() request: AuthenticatedRequest,
+    @Param('slug') slug: string,
+  ) {
+    return this.articleService.findBySlug(request.isAuthenticated, slug);
   }
 
   @Patch(':id')
+  @AdminOnly(true)
   @ApiOkResponse({ type: ArticleEntity })
   updateArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -116,10 +156,12 @@ export class ArticleController {
         'At least one field is required to update the article',
       );
     }
+
     return this.articleService.update(id, updateArticleDto);
   }
 
   @Delete(':id')
+  @AdminOnly(true)
   @ApiOkResponse({ type: ArticleEntity })
   removeArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

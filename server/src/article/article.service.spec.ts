@@ -6,7 +6,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleService } from './article.service';
 import { PrismaService } from '../prisma.service';
 import { ArticleStatus } from '../generated/prisma/client';
-import { InternalServerErrorException } from '@nestjs/common';
+import {
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('ArticleService', () => {
   let service: ArticleService;
@@ -180,7 +183,7 @@ describe('ArticleService', () => {
         articleId: 'id',
       });
 
-      await service.findBySlug(articleSlug);
+      await service.findBySlug(true, articleSlug);
 
       expect(prisma.articleSlugHistory.findUnique).toHaveBeenCalledWith({
         where: {
@@ -440,7 +443,7 @@ describe('ArticleService', () => {
 
       prisma.article.findUnique.mockResolvedValue(expectedReturnValue);
 
-      const returnValue = await service.findBySlug('title');
+      const returnValue = await service.findBySlug(true, 'title');
 
       expect(prisma.article.findUnique).toHaveBeenCalledWith({
         where: {
@@ -574,6 +577,41 @@ describe('ArticleService', () => {
       ).rejects.toThrow(InternalServerErrorException);
 
       expect(prisma.article.update).not.toHaveBeenCalled();
+    });
+
+    it('throws error if fetching article detail in DRAFT or ARCHIVED status - unauthenticated', async () => {
+      prisma.article.findUnique.mockResolvedValueOnce({
+        id: '1',
+        title: 'title',
+        slug: 'slug',
+        body: 'body',
+        status: ArticleStatus.DRAFT,
+      });
+      prisma.article.findUnique.mockResolvedValueOnce({
+        id: '2',
+        title: 'title-1',
+        slug: 'slug-1',
+        body: 'body',
+        status: ArticleStatus.ARCHIVED,
+      });
+      prisma.article.findUnique.mockResolvedValueOnce({
+        id: '3',
+        title: 'title-2',
+        slug: 'slug-2',
+        body: 'body',
+        status: ArticleStatus.PUBLISHED,
+      });
+
+      await expect(service.findBySlug(false, 'slug')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findBySlug(false, 'slug-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findBySlug(false, 'slug-2')).resolves.toMatchObject({
+        id: '3',
+        status: ArticleStatus.PUBLISHED,
+      });
     });
   });
 });

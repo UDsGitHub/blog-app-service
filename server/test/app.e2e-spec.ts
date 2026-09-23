@@ -1,16 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
+import request, { Test as STest } from 'supertest';
+import { AllMethods, App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma.service';
 import { BrowseArticlesResponseDto } from '../src/article/dto/browse-articles.dto';
 import { Article, ArticleStatus } from '../src/generated/prisma/client';
 import { SearchArticlesResponseDto } from '../src/article/dto/search-articles.dto';
 
+const apiKey = process.env.API_KEY ?? 'blog_sk_test_e2e_key_not_for_prod';
+const authHeader = { Authorization: `ApiKey ${apiKey}` };
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let asAdmin: (method: AllMethods, path: string) => STest;
+  let asPublic: (method: AllMethods, path: string) => STest;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -23,6 +28,11 @@ describe('AppController (e2e)', () => {
     );
     prisma = app.get(PrismaService);
     await app.init();
+
+    asAdmin = (method: AllMethods, path: string) =>
+      request(app.getHttpServer())[method](path).set(authHeader);
+    asPublic = (method: AllMethods, path: string) =>
+      request(app.getHttpServer())[method](path);
   });
 
   afterEach(async () => {
@@ -39,8 +49,7 @@ describe('AppController (e2e)', () => {
         status: ArticleStatus.DRAFT,
       };
 
-      const createRes = await request(app.getHttpServer())
-        .post('/articles')
+      const createRes = await asAdmin('post', '/articles')
         .send(expectedData)
         .expect(201);
 
@@ -53,12 +62,14 @@ describe('AppController (e2e)', () => {
       expect(createdArticle.slug).toEqual('first-article');
       expect(createdArticle.status).toEqual('DRAFT');
 
-      const getArticleBySlugRes = await request(app.getHttpServer())
-        .get(`/articles/${createdArticle.slug}`)
-        .expect(200);
-      const getArticleByIdRes = await request(app.getHttpServer())
-        .get(`/articles/id/${createdArticle.id}`)
-        .expect(200);
+      const getArticleBySlugRes = await asAdmin(
+        'get',
+        `/articles/${createdArticle.slug}`,
+      ).expect(200);
+      const getArticleByIdRes = await asAdmin(
+        'get',
+        `/articles/id/${createdArticle.id}`,
+      ).expect(200);
       expect(getArticleBySlugRes.body as Article).toMatchObject(createdArticle);
       expect((getArticleBySlugRes.body as Article).id).toEqual(
         (getArticleByIdRes.body as Article).id,
@@ -66,8 +77,10 @@ describe('AppController (e2e)', () => {
 
       const expectedTitle = 'updated first article';
       const expectedSlug = 'updated-first-article';
-      const updateArticleRes = await request(app.getHttpServer())
-        .patch(`/articles/${createdArticle.id}`)
+      const updateArticleRes = await asAdmin(
+        'patch',
+        `/articles/${createdArticle.id}`,
+      )
         .send({ title: expectedTitle, status: 'PUBLISHED' })
         .expect(200);
       const updatedArticle = updateArticleRes.body as Article;
@@ -82,20 +95,18 @@ describe('AppController (e2e)', () => {
         new Date(updatedArticle.updatedAt as unknown as string).getTime(),
       ).toBeGreaterThan(new Date(createdArticle.createdAt).getTime());
 
-      await request(app.getHttpServer())
-        .delete(`/articles/${createdArticle.id}`)
-        .expect(200);
+      await asAdmin('delete', `/articles/${createdArticle.id}`).expect(200);
 
-      const response = await request(app.getHttpServer())
-        .get('/articles?status=PUBLISHED')
-        .expect(200);
+      const response = await asPublic(
+        'get',
+        '/articles?status=PUBLISHED',
+      ).expect(200);
       const articles = response.body as BrowseArticlesResponseDto;
       expect(articles.data).toHaveLength(0);
     });
 
     it('article created with PUBLISHED status should have publishedAt set', async () => {
-      const createRes = await request(app.getHttpServer())
-        .post('/articles')
+      const createRes = await asAdmin('post', '/articles')
         .send({
           title: 'first article',
           body: 'hello world',
@@ -121,8 +132,7 @@ describe('AppController (e2e)', () => {
 
     describe('browse articles - no search term', () => {
       it('fetches articles', async () => {
-        await request(app.getHttpServer())
-          .post('/articles')
+        await asAdmin('post', '/articles')
           .send({
             title: 'first article',
             body: `
@@ -134,8 +144,7 @@ describe('AppController (e2e)', () => {
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        await request(app.getHttpServer())
-          .post('/articles')
+        await asAdmin('post', '/articles')
           .send({
             title: 'second article',
             body: `
@@ -149,8 +158,7 @@ describe('AppController (e2e)', () => {
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        const third = await request(app.getHttpServer())
-          .post('/articles')
+        const third = await asAdmin('post', '/articles')
           .send({
             title: 'third article',
             body: 'hello world',
@@ -158,8 +166,7 @@ describe('AppController (e2e)', () => {
             excerpt: 'some excerpt',
           })
           .expect(201);
-        const fourth = await request(app.getHttpServer())
-          .post('/articles')
+        const fourth = await asAdmin('post', '/articles')
           .send({
             title: 'fourth article',
             body: 'hello world',
@@ -170,9 +177,10 @@ describe('AppController (e2e)', () => {
         const article3 = third.body as Article;
         const article4 = fourth.body as Article;
 
-        const getArticlesRes = await request(app.getHttpServer())
-          .get(`/articles?cursorId=${article4.id}&limit=3&status=DRAFT`)
-          .expect(200);
+        const getArticlesRes = await asAdmin(
+          'get',
+          `/articles?cursorId=${article4.id}&limit=3&status=DRAFT`,
+        ).expect(200);
         const articles = getArticlesRes.body as BrowseArticlesResponseDto;
         expect(articles.data).toHaveLength(3);
         expect(articles.data[0].id).toBe(article3.id);
@@ -185,32 +193,28 @@ describe('AppController (e2e)', () => {
       });
 
       it('fetches next page', async () => {
-        const first = await request(app.getHttpServer())
-          .post('/articles')
+        const first = await asAdmin('post', '/articles')
           .send({
             title: 'first article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        const second = await request(app.getHttpServer())
-          .post('/articles')
+        const second = await asAdmin('post', '/articles')
           .send({
             title: 'second article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        await request(app.getHttpServer())
-          .post('/articles')
+        await asAdmin('post', '/articles')
           .send({
             title: 'third article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        await request(app.getHttpServer())
-          .post('/articles')
+        await asAdmin('post', '/articles')
           .send({
             title: 'fourth article',
             body: 'hello world',
@@ -222,42 +226,41 @@ describe('AppController (e2e)', () => {
         const article2 = second.body as Article;
 
         // fetch and assert first page next cursorId
-        const firstPageRes = await request(app.getHttpServer())
-          .get(`/articles?limit=3&status=DRAFT`)
-          .expect(200);
+        const firstPageRes = await asAdmin(
+          'get',
+          `/articles?limit=3&status=DRAFT`,
+        ).expect(200);
         const firstPageArticles =
           firstPageRes.body as BrowseArticlesResponseDto;
         expect(firstPageArticles.data[2].id).toBe(article2.id);
         expect(firstPageArticles.hasMore).toBe(true);
 
         // use cursorId to fetch next page
-        const secondPageRes = await request(app.getHttpServer())
-          .get(`/articles?cursorId=${article2.id}&limit=3&status=DRAFT`)
-          .expect(200);
+        const secondPageRes = await asAdmin(
+          'get',
+          `/articles?cursorId=${article2.id}&limit=3&status=DRAFT`,
+        ).expect(200);
         const articles = secondPageRes.body as BrowseArticlesResponseDto;
         expect(articles.data).toHaveLength(1);
         expect(articles.data[0].id).toBe(article1.id);
       });
 
       it('fetches articles<PUBLISHED> - order by publishedAt', async () => {
-        const first = await request(app.getHttpServer())
-          .post('/articles')
+        const first = await asAdmin('post', '/articles')
           .send({
             title: 'first article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        const second = await request(app.getHttpServer())
-          .post('/articles')
+        const second = await asAdmin('post', '/articles')
           .send({
             title: 'second article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        const third = await request(app.getHttpServer())
-          .post('/articles')
+        const third = await asAdmin('post', '/articles')
           .send({
             title: 'third article',
             body: 'hello world',
@@ -270,21 +273,19 @@ describe('AppController (e2e)', () => {
         const article3 = third.body as Article;
 
         // publish in reverse order so publishedAt ranking != createdAt ranking
-        await request(app.getHttpServer())
-          .patch(`/articles/${article3.id}`)
+        await asAdmin('patch', `/articles/${article3.id}`)
           .send({ status: ArticleStatus.PUBLISHED })
           .expect(200);
-        await request(app.getHttpServer())
-          .patch(`/articles/${article2.id}`)
+        await asAdmin('patch', `/articles/${article2.id}`)
           .send({ status: ArticleStatus.PUBLISHED })
           .expect(200);
-        await request(app.getHttpServer())
-          .patch(`/articles/${article1.id}`)
+        await asAdmin('patch', `/articles/${article1.id}`)
           .send({ status: ArticleStatus.PUBLISHED })
           .expect(200);
-        const getArticlesRes = await request(app.getHttpServer())
-          .get(`/articles?limit=3&status=PUBLISHED`)
-          .expect(200);
+        const getArticlesRes = await asAdmin(
+          'get',
+          `/articles?limit=3&status=PUBLISHED`,
+        ).expect(200);
         const articles = getArticlesRes.body as BrowseArticlesResponseDto;
 
         // newest published first (first was published last)
@@ -296,24 +297,21 @@ describe('AppController (e2e)', () => {
       });
 
       it('fetches articles<ARCHIVED> - order by publishedAt', async () => {
-        const first = await request(app.getHttpServer())
-          .post('/articles')
+        const first = await asAdmin('post', '/articles')
           .send({
             title: 'first article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        const second = await request(app.getHttpServer())
-          .post('/articles')
+        const second = await asAdmin('post', '/articles')
           .send({
             title: 'second article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        const third = await request(app.getHttpServer())
-          .post('/articles')
+        const third = await asAdmin('post', '/articles')
           .send({
             title: 'third article',
             body: 'hello world',
@@ -326,33 +324,28 @@ describe('AppController (e2e)', () => {
         const article3 = third.body as Article;
 
         // publish in reverse order so publishedAt ranking != createdAt ranking
-        await request(app.getHttpServer())
-          .patch(`/articles/${article3.id}`)
+        await asAdmin('patch', `/articles/${article3.id}`)
           .send({ status: ArticleStatus.PUBLISHED })
           .expect(200);
-        await request(app.getHttpServer())
-          .patch(`/articles/${article3.id}`)
+        await asAdmin('patch', `/articles/${article3.id}`)
           .send({ status: ArticleStatus.ARCHIVED })
           .expect(200);
-        await request(app.getHttpServer())
-          .patch(`/articles/${article2.id}`)
+        await asAdmin('patch', `/articles/${article2.id}`)
           .send({ status: ArticleStatus.PUBLISHED })
           .expect(200);
-        await request(app.getHttpServer())
-          .patch(`/articles/${article2.id}`)
+        await asAdmin('patch', `/articles/${article2.id}`)
           .send({ status: ArticleStatus.ARCHIVED })
           .expect(200);
-        await request(app.getHttpServer())
-          .patch(`/articles/${article1.id}`)
+        await asAdmin('patch', `/articles/${article1.id}`)
           .send({ status: ArticleStatus.PUBLISHED })
           .expect(200);
-        await request(app.getHttpServer())
-          .patch(`/articles/${article1.id}`)
+        await asAdmin('patch', `/articles/${article1.id}`)
           .send({ status: ArticleStatus.ARCHIVED })
           .expect(200);
-        const getArticlesRes = await request(app.getHttpServer())
-          .get(`/articles?limit=3&status=ARCHIVED`)
-          .expect(200);
+        const getArticlesRes = await asAdmin(
+          'get',
+          `/articles?limit=3&status=ARCHIVED`,
+        ).expect(200);
         const articles = getArticlesRes.body as BrowseArticlesResponseDto;
 
         // newest published first (first was published last)
@@ -362,78 +355,25 @@ describe('AppController (e2e)', () => {
           article3.id,
         ]);
       });
-
-      // it('fetches articles - derived excerpt', async () => {
-      //   const first = await request(app.getHttpServer())
-      //     .post('/articles')
-      //     .send({
-      //       title: 'first article',
-      //       body: 'hello world',
-      //       status: ArticleStatus.DRAFT,
-      //     })
-      //     .expect(201);
-
-      //   const article1 = first.body as Article;
-
-      //   // publish in reverse order so publishedAt ranking != createdAt ranking
-      //   await request(app.getHttpServer())
-      //     .patch(`/articles/${article3.id}`)
-      //     .send({ status: ArticleStatus.PUBLISHED })
-      //     .expect(200);
-      //   await request(app.getHttpServer())
-      //     .patch(`/articles/${article3.id}`)
-      //     .send({ status: ArticleStatus.ARCHIVED })
-      //     .expect(200);
-      //   await request(app.getHttpServer())
-      //     .patch(`/articles/${article2.id}`)
-      //     .send({ status: ArticleStatus.PUBLISHED })
-      //     .expect(200);
-      //   await request(app.getHttpServer())
-      //     .patch(`/articles/${article2.id}`)
-      //     .send({ status: ArticleStatus.ARCHIVED })
-      //     .expect(200);
-      //   await request(app.getHttpServer())
-      //     .patch(`/articles/${article1.id}`)
-      //     .send({ status: ArticleStatus.PUBLISHED })
-      //     .expect(200);
-      //   await request(app.getHttpServer())
-      //     .patch(`/articles/${article1.id}`)
-      //     .send({ status: ArticleStatus.ARCHIVED })
-      //     .expect(200);
-      //   const getArticlesRes = await request(app.getHttpServer())
-      //     .get(`/articles?limit=3&status=ARCHIVED`)
-      //     .expect(200);
-      //   const articles = getArticlesRes.body as FindArticlesResponseDto;
-
-      //   // newest published first (first was published last)
-      //   expect(articles.data.map((a) => a.id)).toEqual([
-      //     article1.id,
-      //     article2.id,
-      //     article3.id,
-      //   ]);
-      // });
     });
 
     describe('search articles - search term', () => {
       it('fetches articles with search term', async () => {
         const searchTerm = 'article 1';
-        await request(app.getHttpServer())
-          .post('/articles')
+        await asAdmin('post', '/articles')
           .send({
             title: 'first article',
             body: 'hello world',
             status: ArticleStatus.DRAFT,
           })
           .expect(201);
-        const second = await request(app.getHttpServer())
-          .post('/articles')
+        const second = await asAdmin('post', '/articles')
           .send({
             title: `second article`,
             body: `hello world ${searchTerm}`,
           })
           .expect(201);
-        const third = await request(app.getHttpServer())
-          .post('/articles')
+        const third = await asAdmin('post', '/articles')
           .send({
             title: 'third article',
             body: `hello world ${searchTerm}`,
@@ -442,11 +382,10 @@ describe('AppController (e2e)', () => {
         const article2 = second.body as Article;
         const article3 = third.body as Article;
 
-        const getArticlesRes = await request(app.getHttpServer())
-          .get(
-            `/articles/search?search=${encodeURIComponent(searchTerm)}&limit=3&status=DRAFT`,
-          )
-          .expect(200);
+        const getArticlesRes = await asAdmin(
+          'get',
+          `/articles/search?search=${encodeURIComponent(searchTerm)}&limit=3&status=DRAFT`,
+        ).expect(200);
         const { data: articles } =
           getArticlesRes.body as SearchArticlesResponseDto;
 
@@ -472,100 +411,78 @@ describe('AppController (e2e)', () => {
   });
 
   describe('fails as needed', () => {
-    it('get articles throws 400 on bad request', async () => {
-      await request(app.getHttpServer())
-        .get('/articles?cursorId=1&limit=10')
-        .expect(400);
-      await request(app.getHttpServer())
-        .get('/articles?cursorId=1&limit=string')
-        .expect(400);
-      await request(app.getHttpServer())
-        .get(`/articles?cursorId=${crypto.randomUUID()}&limit=string`)
-        .expect(400);
-      await request(app.getHttpServer())
-        .get(
-          `/articles?cursorId=${crypto.randomUUID()}&limit=3&status=BAD_STATUS`,
-        )
-        .expect(400);
+    it('browse articles throws 400 on bad request', async () => {
+      await asAdmin('get', '/articles?cursorId=1&limit=10').expect(400);
+      await asAdmin('get', '/articles?cursorId=1&limit=string').expect(400);
+      await asAdmin(
+        'get',
+        `/articles?cursorId=${crypto.randomUUID()}&limit=string`,
+      ).expect(400);
+      await asAdmin(
+        'get',
+        `/articles?cursorId=${crypto.randomUUID()}&limit=3&status=BAD_STATUS`,
+      ).expect(400);
     });
 
     it('create article throws 400 error on bad request', async () => {
-      await request(app.getHttpServer()).post('/articles').send().expect(400);
-      await request(app.getHttpServer())
-        .post('/articles')
-        .send({ title: 'hello' })
-        .expect(400);
-      await request(app.getHttpServer())
-        .post('/articles')
-        .send({ body: 'goodbye' })
-        .expect(400);
+      await asAdmin('post', '/articles').send().expect(400);
+      await asAdmin('post', '/articles').send({ title: 'hello' }).expect(400);
+      await asAdmin('post', '/articles').send({ body: 'goodbye' }).expect(400);
     });
 
     it('cannot create article with ARCHIVED STATUS', async () => {
-      await request(app.getHttpServer())
-        .post('/articles')
+      await asAdmin('post', '/articles')
         .send({ title: 'title', body: 'body', status: ArticleStatus.ARCHIVED })
         .expect(400);
     });
 
     it('update article throws 400 error on bad request', async () => {
       const randomId = crypto.randomUUID();
-      await request(app.getHttpServer()).patch('/articles/1').expect(400);
-      await request(app.getHttpServer())
-        .patch(`/articles/${randomId}`)
-        .expect(400);
-      await request(app.getHttpServer())
-        .patch(`/articles/${randomId}`)
+      await asAdmin('patch', '/articles/1').expect(400);
+      await asAdmin('patch', `/articles/${randomId}`).expect(400);
+      await asAdmin('patch', `/articles/${randomId}`)
         .send({ title: 'gone' })
         .expect(404);
-      const response = await request(app.getHttpServer())
-        .post('/articles')
+      const response = await asAdmin('post', '/articles')
         .send({ title: 'hello', body: 'world' })
         .expect(201);
       const createdArticle = response.body as Article;
-      await request(app.getHttpServer())
-        .patch(`/articles/${createdArticle.id}`)
+      await asAdmin('patch', `/articles/${createdArticle.id}`)
         .send({ status: 'BAD_STATUS' })
         .expect(400);
     });
 
     it('delete article throws 400 error on bad request', async () => {
-      await request(app.getHttpServer()).delete('/articles/1').expect(400);
+      await asAdmin('delete', '/articles/1').expect(400);
     });
 
     it('unknown slug should return 404', async () => {
-      await request(app.getHttpServer()).get('/articles/my-slug').expect(404);
+      await asAdmin('get', '/articles/my-slug').expect(404);
     });
 
     it('unknown article id should return 404', async () => {
-      await request(app.getHttpServer())
-        .get(`/articles/id/${crypto.randomUUID()}`)
-        .expect(404);
+      await asAdmin('get', `/articles/id/${crypto.randomUUID()}`).expect(404);
     });
 
     it('deleting unknown article id should return 404', async () => {
-      await request(app.getHttpServer())
-        .delete(`/articles/${crypto.randomUUID()}`)
-        .expect(404);
+      await asAdmin('delete', `/articles/${crypto.randomUUID()}`).expect(404);
     });
 
     it('cannot filter articles by dates without status parameter', async () => {
-      await request(app.getHttpServer())
-        .get(`/articles?limit=2&startDate=2026-09-10`)
-        .expect(400);
-      await request(app.getHttpServer())
-        .get(`/articles?limit=2&endDate=2026-09-10`)
-        .expect(400);
-      await request(app.getHttpServer())
-        .get(`/articles?limit=2&startDate=2026-09-10&endDate=2026-09-12`)
-        .expect(400);
+      await asAdmin('get', `/articles?limit=2&startDate=2026-09-10`).expect(
+        400,
+      );
+      await asAdmin('get', `/articles?limit=2&endDate=2026-09-10`).expect(400);
+      await asAdmin(
+        'get',
+        `/articles?limit=2&startDate=2026-09-10&endDate=2026-09-12`,
+      ).expect(400);
     });
   });
 
   describe('edge cases', () => {
     it('creates unique slug if title is duplicate', async () => {
-      const first = await request(app.getHttpServer())
-        .post('/articles')
+      const first = await asAdmin('post', '/articles')
         .send({
           title: 'first article',
           body: 'hello world',
@@ -573,8 +490,7 @@ describe('AppController (e2e)', () => {
         })
         .expect(201);
       const article1 = first.body as Article;
-      const second = await request(app.getHttpServer())
-        .post('/articles')
+      const second = await asAdmin('post', '/articles')
         .send({
           title: 'first article',
           body: 'hello world',
@@ -584,9 +500,10 @@ describe('AppController (e2e)', () => {
 
       const article2 = second.body as Article;
 
-      const getArticlesRes = await request(app.getHttpServer())
-        .get(`/articles?status=DRAFT`)
-        .expect(200);
+      const getArticlesRes = await asAdmin(
+        'get',
+        `/articles?status=DRAFT`,
+      ).expect(200);
       const { data } = getArticlesRes.body as BrowseArticlesResponseDto;
       const [secondArticle, firstArticle] = data;
 
@@ -606,8 +523,7 @@ describe('AppController (e2e)', () => {
     });
 
     it('finds article from old slug using slug history', async () => {
-      const createArticleRes = await request(app.getHttpServer())
-        .post('/articles')
+      const createArticleRes = await asAdmin('post', '/articles')
         .send({
           title: 'original article',
           body: 'hello world',
@@ -615,22 +531,21 @@ describe('AppController (e2e)', () => {
         })
         .expect(201);
       const originalArticle = createArticleRes.body as Article;
-      await request(app.getHttpServer())
-        .patch(`/articles/${originalArticle.id}`)
+      await asAdmin('patch', `/articles/${originalArticle.id}`)
         .send({ title: 'new title' })
         .expect(200);
 
-      const getArticlesRes = await request(app.getHttpServer())
-        .get(`/articles/${originalArticle.slug}`)
-        .expect(200);
+      const getArticlesRes = await asAdmin(
+        'get',
+        `/articles/${originalArticle.slug}`,
+      ).expect(200);
       const fetchedArticle = getArticlesRes.body as Article;
       expect(fetchedArticle.slug).not.toEqual(originalArticle.slug);
       expect(fetchedArticle.id).toEqual(originalArticle.id);
     });
 
     it('throws 500 error when moving article from published to draft', async () => {
-      const first = await request(app.getHttpServer())
-        .post('/articles')
+      const first = await asAdmin('post', '/articles')
         .send({
           title: 'first article',
           body: 'hello',
@@ -638,8 +553,7 @@ describe('AppController (e2e)', () => {
         })
         .expect(201);
       const firstArticle = first.body as Article;
-      await request(app.getHttpServer())
-        .patch(`/articles/${firstArticle.id}`)
+      await asAdmin('patch', `/articles/${firstArticle.id}`)
         .send({
           status: ArticleStatus.DRAFT,
         })
@@ -647,8 +561,7 @@ describe('AppController (e2e)', () => {
     });
 
     it('throws 500 error when moving article from draft to archived', async () => {
-      const first = await request(app.getHttpServer())
-        .post('/articles')
+      const first = await asAdmin('post', '/articles')
         .send({
           title: 'first article',
           body: 'hello',
@@ -656,12 +569,105 @@ describe('AppController (e2e)', () => {
         })
         .expect(201);
       const firstArticle = first.body as Article;
-      await request(app.getHttpServer())
-        .patch(`/articles/${firstArticle.id}`)
+      await asAdmin('patch', `/articles/${firstArticle.id}`)
         .send({
           status: ArticleStatus.ARCHIVED,
         })
         .expect(500);
+    });
+  });
+
+  describe('auth guard', () => {
+    it('admin routes returns 401 without key', async () => {
+      await asPublic('post', '/articles')
+        .send({ title: 'hello', body: 'world' })
+        .expect(401);
+      await asPublic('patch', `/articles/${crypto.randomUUID()}`)
+        .send({ title: 'hello', body: 'world' })
+        .expect(401);
+      await asPublic('delete', `/articles/${crypto.randomUUID()}`).expect(401);
+      await asPublic('get', `/articles/id/${crypto.randomUUID()}`).expect(401);
+    });
+
+    it('DRAFT | ARCHIVED browse/search returns 401 without key', async () => {
+      await asPublic('get', `/articles?status=DRAFT`).expect(401);
+      await asPublic('get', `/articles?status=ARCHIVED`).expect(401);
+      await asPublic(
+        'get',
+        `/articles/search?search=hello&status=DRAFT`,
+      ).expect(401);
+      await asPublic(
+        'get',
+        `/articles/search?search=hello&status=ARCHIVED`,
+      ).expect(401);
+    });
+
+    it('DRAFT or ARCHIVED article detail returns 404 without key', async () => {
+      const first = await asAdmin('post', '/articles')
+        .send({
+          title: 'title',
+          body: 'body',
+          status: ArticleStatus.DRAFT,
+        })
+        .expect(201);
+      const second = await asAdmin('post', '/articles')
+        .send({
+          title: 'title',
+          body: 'body',
+          status: ArticleStatus.PUBLISHED,
+        })
+        .expect(201);
+
+      const firstArticle = first.body as Article;
+      const secondArticle = second.body as Article;
+
+      await asAdmin('patch', `/articles/${secondArticle.id}`)
+        .send({
+          status: ArticleStatus.ARCHIVED,
+        })
+        .expect(200);
+
+      await asPublic('get', `/articles/${firstArticle.slug}`).expect(404);
+      await asPublic('get', `/articles/${secondArticle.slug}`).expect(404);
+      await asPublic('get', `/articles?status=PUBLISHED`).expect(200);
+    });
+
+    it('PUBLISHED slug works without key', async () => {
+      const first = await asAdmin('post', '/articles')
+        .send({
+          title: 'title',
+          body: 'body',
+          status: ArticleStatus.PUBLISHED,
+        })
+        .expect(201);
+
+      const firstArticle = first.body as Article;
+      await asPublic('get', `/articles/${firstArticle.slug}`).expect(200);
+    });
+
+    it('missing status throws 400 on browse/search articles', async () => {
+      await asPublic('get', '/articles').expect(400);
+      await asPublic('get', '/articles/search').expect(400);
+    });
+
+    it('wrong key is treated as unauthenticated on admin routes', async () => {
+      await asPublic('post', '/articles')
+        .set({ Authorization: 'ApiKey wrong' })
+        .send({
+          title: 'title',
+          body: 'body',
+          status: ArticleStatus.DRAFT,
+        })
+        .expect(401);
+      await asPublic('patch', `/articles/${crypto.randomUUID()}`)
+        .set({ Authorization: 'ApiKey wrong' })
+        .send({
+          status: ArticleStatus.PUBLISHED,
+        })
+        .expect(401);
+      await asPublic('delete', `/articles/${crypto.randomUUID()}`)
+        .set({ Authorization: 'ApiKey wrong' })
+        .expect(401);
     });
   });
 });

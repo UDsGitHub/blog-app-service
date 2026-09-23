@@ -52,7 +52,7 @@ export class ArticleService {
     return this.searchArticles(limit, search, status, startDate, endDate);
   }
 
-  async findBySlug(slug: string) {
+  async findBySlug(isAuthenticated: boolean, slug: string) {
     let article = await this.prisma.article.findUnique({
       where: {
         slug,
@@ -80,6 +80,14 @@ export class ArticleService {
       if (!article) {
         throw new NotFoundException(`Article with slug: ${slug} not found`);
       }
+    }
+
+    if (
+      !isAuthenticated &&
+      (article.status === ArticleStatus.DRAFT ||
+        article.status === ArticleStatus.ARCHIVED)
+    ) {
+      throw new NotFoundException();
     }
 
     return article;

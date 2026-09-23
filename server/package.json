@@ -1,5 +1,5 @@
 {
-  "name": "blog-server",
+  "name": "blog-studio-server",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -87,7 +87,7 @@
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!slug/|@nestjs/terminus/)"
+      "node_modules/(?!slug/|@nestjs/terminus/|@nestjs/config)"
     ]
   }
 }
