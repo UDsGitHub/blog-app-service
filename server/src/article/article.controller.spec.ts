@@ -6,7 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleController } from './article.controller';
 import { ArticleService } from './article.service';
 import { ArticleStatus } from '../generated/prisma/client';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { AuthenticatedRequest } from '../guard/authenticated-request.interface';
 
 const authedReq = { isAuthenticated: true } as AuthenticatedRequest;
@@ -52,7 +52,7 @@ describe('ArticleController', () => {
     });
 
     it('calls app.service.browse()', async () => {
-      await controller.browseArticles(authedReq, { limit: 25 });
+      await controller.browseArticles({ limit: 25 });
       expect(appService.browse).toHaveBeenCalledWith(
         25,
         undefined,
@@ -63,7 +63,7 @@ describe('ArticleController', () => {
     });
 
     it('calls app.service.search()', async () => {
-      await controller.searchArticles(authedReq, {
+      await controller.searchArticles({
         search: 'search',
         limit: 25,
       });
@@ -83,7 +83,7 @@ describe('ArticleController', () => {
         hasMore: false,
       };
       appService.browse.mockResolvedValue(expected);
-      const response = await controller.browseArticles(authedReq, {
+      const response = await controller.browseArticles({
         cursorId,
         limit: 25,
       });
@@ -103,9 +103,6 @@ describe('ArticleController', () => {
         authedReq.isAuthenticated,
         'slug',
       );
-
-      await controller.findBySlug(authedReq, 'slug');
-      expect(appService.findBySlug).toHaveBeenCalledWith(true, 'slug');
 
       await controller.findBySlug(anonReq, 'slug');
       expect(appService.findBySlug).toHaveBeenCalledWith(false, 'slug');
@@ -139,42 +136,6 @@ describe('ArticleController', () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(appService.create).not.toHaveBeenCalled();
-    });
-
-    it('throws error browsing or searching article without status - unauthenticated', async () => {
-      await expect(
-        controller.browseArticles(anonReq, { limit: 25 }),
-      ).rejects.toThrow(BadRequestException);
-
-      await expect(
-        controller.searchArticles(anonReq, {
-          limit: 25,
-          search: 'hello world',
-        }),
-      ).rejects.toThrow(BadRequestException);
-
-      expect(appService.browse).not.toHaveBeenCalled();
-      expect(appService.search).not.toHaveBeenCalled();
-    });
-
-    it('throws error browsing or searching with status<DRAFT> - unauthorized', async () => {
-      await expect(
-        controller.browseArticles(anonReq, {
-          limit: 25,
-          status: ArticleStatus.DRAFT,
-        }),
-      ).rejects.toThrow(UnauthorizedException);
-
-      await expect(
-        controller.searchArticles(anonReq, {
-          limit: 25,
-          search: 'hello world',
-          status: ArticleStatus.ARCHIVED,
-        }),
-      ).rejects.toThrow(UnauthorizedException);
-
-      expect(appService.browse).not.toHaveBeenCalled();
-      expect(appService.search).not.toHaveBeenCalled();
     });
   });
 });

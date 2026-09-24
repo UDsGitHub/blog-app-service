@@ -10,7 +10,7 @@ import {
   ParseUUIDPipe,
   Query,
   Req,
-  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
@@ -28,6 +28,7 @@ import {
 import { ArticleEntity } from './article.entity';
 import type { AuthenticatedRequest } from '../guard/authenticated-request.interface';
 import { AdminOnly } from '../guard/admin-only.decorator';
+import { ArticleQueryGuard } from './article-query.guard';
 
 @Controller('articles')
 export class ArticleController {
@@ -48,33 +49,13 @@ export class ArticleController {
   }
 
   @Get()
+  @UseGuards(ArticleQueryGuard)
   @ApiOkResponse({
     type: BrowseArticlesResponseDto,
   })
   async browseArticles(
-    @Req() request: AuthenticatedRequest,
     @Query() query: BrowseArticlesQueryDto,
   ): Promise<BrowseArticlesResponseDto> {
-    if (!request.isAuthenticated && !query.status) {
-      throw new BadRequestException(
-        'status is a required field for unauthenticated users',
-      );
-    }
-
-    if (
-      !request.isAuthenticated &&
-      (query.status === ArticleStatus.DRAFT ||
-        query.status === ArticleStatus.ARCHIVED)
-    ) {
-      throw new UnauthorizedException();
-    }
-
-    if ((query.startDate || query.endDate) && !query.status) {
-      throw new BadRequestException(
-        'status is required when filtering by startDate or endDate',
-      );
-    }
-
     return this.articleService.browse(
       query.limit,
       query.cursorId,
@@ -85,33 +66,13 @@ export class ArticleController {
   }
 
   @Get('/search')
+  @UseGuards(ArticleQueryGuard)
   @ApiOkResponse({
     type: SearchArticlesResponseDto,
   })
   async searchArticles(
-    @Req() request: AuthenticatedRequest,
     @Query() query: SearchArticlesQueryDto,
   ): Promise<SearchArticlesResponseDto> {
-    if (!request.isAuthenticated && !query.status) {
-      throw new BadRequestException(
-        'status is a required field for unauthenticated users',
-      );
-    }
-
-    if (
-      !request.isAuthenticated &&
-      (query.status === ArticleStatus.DRAFT ||
-        query.status === ArticleStatus.ARCHIVED)
-    ) {
-      throw new UnauthorizedException();
-    }
-
-    if ((query.startDate || query.endDate) && !query.status) {
-      throw new BadRequestException(
-        'status is required when filtering by startDate or endDate',
-      );
-    }
-
     return this.articleService.search(
       query.limit,
       query.search,

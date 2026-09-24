@@ -31,7 +31,7 @@ describe('Auth Guard', () => {
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
   });
 
-  it('throws 401 no apikey and not admin only', () => {
+  it('return true no apikey and not admin only', () => {
     getRequest.mockReturnValue({ headers: {} });
     reflector.get.mockReturnValue(false);
 

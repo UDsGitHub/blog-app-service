@@ -477,6 +477,14 @@ describe('AppController (e2e)', () => {
         'get',
         `/articles?limit=2&startDate=2026-09-10&endDate=2026-09-12`,
       ).expect(400);
+      await asPublic('get', `/articles?limit=2&startDate=2026-09-10`).expect(
+        400,
+      );
+      await asPublic('get', `/articles?limit=2&endDate=2026-09-10`).expect(400);
+      await asPublic(
+        'get',
+        `/articles?limit=2&startDate=2026-09-10&endDate=2026-09-12`,
+      ).expect(400);
     });
   });
 
@@ -544,7 +552,7 @@ describe('AppController (e2e)', () => {
       expect(fetchedArticle.id).toEqual(originalArticle.id);
     });
 
-    it('throws 500 error when moving article from published to draft', async () => {
+    it('unpublishes an article from published to draft, keeping publishedAt', async () => {
       const first = await asAdmin('post', '/articles')
         .send({
           title: 'first article',
@@ -553,14 +561,48 @@ describe('AppController (e2e)', () => {
         })
         .expect(201);
       const firstArticle = first.body as Article;
-      await asAdmin('patch', `/articles/${firstArticle.id}`)
+
+      const updated = await asAdmin('patch', `/articles/${firstArticle.id}`)
         .send({
           status: ArticleStatus.DRAFT,
         })
-        .expect(500);
+        .expect(200);
+      const updatedArticle = updated.body as Article;
+
+      expect(updatedArticle.status).toBe(ArticleStatus.DRAFT);
+      expect(updatedArticle.publishedAt).toEqual(firstArticle.publishedAt);
+
+      // no longer publicly reachable once unpublished
+      await asPublic('get', `/articles/${firstArticle.slug}`).expect(404);
     });
 
-    it('throws 500 error when moving article from draft to archived', async () => {
+    it('records slug history when a previously-published article changes title after being unpublished', async () => {
+      const first = await asAdmin('post', '/articles')
+        .send({
+          title: 'unpublish and rename',
+          body: 'hello',
+          status: ArticleStatus.PUBLISHED,
+        })
+        .expect(201);
+      const originalArticle = first.body as Article;
+
+      await asAdmin('patch', `/articles/${originalArticle.id}`)
+        .send({ status: ArticleStatus.DRAFT })
+        .expect(200);
+      await asAdmin('patch', `/articles/${originalArticle.id}`)
+        .send({ title: 'renamed while unpublished' })
+        .expect(200);
+
+      const getArticleRes = await asAdmin(
+        'get',
+        `/articles/${originalArticle.slug}`,
+      ).expect(200);
+      const fetchedArticle = getArticleRes.body as Article;
+      expect(fetchedArticle.id).toEqual(originalArticle.id);
+      expect(fetchedArticle.slug).not.toEqual(originalArticle.slug);
+    });
+
+    it('throws 400 error when moving article from draft to archived', async () => {
       const first = await asAdmin('post', '/articles')
         .send({
           title: 'first article',
@@ -573,7 +615,7 @@ describe('AppController (e2e)', () => {
         .send({
           status: ArticleStatus.ARCHIVED,
         })
-        .expect(500);
+        .expect(400);
     });
   });
 

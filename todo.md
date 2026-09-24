@@ -19,9 +19,14 @@ Plan: see PLAN.md. API first, then UI.
 - [x] search results return ts_headline snippet instead of body
 - [x] list ordering: PUBLISHED by publishedAt desc, others by createdAt desc (decide)
 - [x] date range filter (from/to on publishedAt)
+- [x] allow unpublish (PUBLISHED -> DRAFT) directly; keep DRAFT -> ARCHIVED blocked (500); publishedAt untouched by unpublish
+- [x] fix slug history to key off `publishedAt` ever set, not current status === PUBLISHED (was dropping history for renames made while unpublished/archived)
 - [ ] webhook module: signed payload, WEBHOOK_URLS env, publish-affecting events only
 - [ ] ETag + Cache-Control on list and detail
 - [x] update tests for all of the above
+- [x] follow-up: draftToArchived now throws BadRequestException (400) instead of 500
+- [x] follow-up: AuthGuard key-length short-circuit reviewed, accepted as-is (only leaks key length, not contents)
+- [ ] follow-up: dedupe the unauthenticated-status-required block shared by browseArticles/searchArticles into a private `assertPublicAccess` method (see PLAN.md §11)
 
 ## Portfolio (~/code/apps/portfolio)
 - [ ] revalidate route handler: verify HMAC, revalidateTag('articles')

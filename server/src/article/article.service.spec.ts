@@ -6,10 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleService } from './article.service';
 import { PrismaService } from '../prisma.service';
 import { ArticleStatus } from '../generated/prisma/client';
-import {
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('ArticleService', () => {
   let service: ArticleService;
@@ -156,6 +153,7 @@ describe('ArticleService', () => {
         slug: articleSlug,
         body: 'hello',
         status: ArticleStatus.PUBLISHED,
+        publishedAt: new Date('2026-09-01'),
       });
 
       await service.update(articleId, { title: 'new title' });
@@ -166,6 +164,47 @@ describe('ArticleService', () => {
           slug: articleSlug,
         },
       });
+    });
+
+    it('creates new slug history entry if a previously-published article is archived or drafted and title is changed', async () => {
+      const articleId = '1';
+      const articleSlug = 'slug';
+
+      prisma.article.findUnique.mockResolvedValue({
+        id: articleId,
+        title: 'title',
+        slug: articleSlug,
+        body: 'hello',
+        status: ArticleStatus.ARCHIVED,
+        publishedAt: new Date('2026-09-01'),
+      });
+
+      await service.update(articleId, { title: 'new title' });
+
+      expect(prisma.articleSlugHistory.create).toHaveBeenCalledWith({
+        data: {
+          articleId,
+          slug: articleSlug,
+        },
+      });
+    });
+
+    it('does not create a slug history entry for an article that was never published', async () => {
+      const articleId = '1';
+      const articleSlug = 'slug';
+
+      prisma.article.findUnique.mockResolvedValue({
+        id: articleId,
+        title: 'title',
+        slug: articleSlug,
+        body: 'hello',
+        status: ArticleStatus.DRAFT,
+        publishedAt: null,
+      });
+
+      await service.update(articleId, { title: 'new title' });
+
+      expect(prisma.articleSlugHistory.create).not.toHaveBeenCalled();
     });
 
     it('falls back to slug history article id if not found in article table', async () => {
@@ -556,27 +595,31 @@ describe('ArticleService', () => {
         service.update(crypto.randomUUID(), {
           status: ArticleStatus.ARCHIVED,
         }),
-      ).rejects.toThrow(InternalServerErrorException);
+      ).rejects.toThrow(BadRequestException);
 
       expect(prisma.article.update).not.toHaveBeenCalled();
     });
 
-    it('throws error if updating article status from PUBLISHED to DRAFT', async () => {
+    it('allows unpublishing an article from PUBLISHED to DRAFT without resetting publishedAt', async () => {
+      const publishedAt = new Date('2026-09-01');
       prisma.article.findUnique.mockResolvedValue({
         id: '1',
         title: 'title',
         slug: 'slug',
         body: 'body',
         status: ArticleStatus.PUBLISHED,
+        publishedAt,
       });
 
-      await expect(
-        service.update(crypto.randomUUID(), {
-          status: ArticleStatus.DRAFT,
-        }),
-      ).rejects.toThrow(InternalServerErrorException);
+      await service.update('1', { status: ArticleStatus.DRAFT });
 
-      expect(prisma.article.update).not.toHaveBeenCalled();
+      expect(prisma.article.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: {
+          status: ArticleStatus.DRAFT,
+          updatedAt: expect.any(Date) as Date,
+        },
+      });
     });
 
     it('throws error if fetching article detail in DRAFT or ARCHIVED status - unauthenticated', async () => {

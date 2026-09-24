@@ -1,6 +1,6 @@
 import {
+  BadRequestException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateArticleDto } from './dto/create-article.dto';
@@ -119,16 +119,14 @@ export class ArticleService {
       updateData['publishedAt'] = new Date();
     }
 
-    // throw error if moving from published -> draft or draft -> archived
-    const publishedToDraft =
-      updateData?.status === ArticleStatus.DRAFT &&
-      article.status === ArticleStatus.PUBLISHED;
+    // draft can only reach archived by way of published, so an archived
+    // article always has a publishedAt to order and filter by
     const draftToArchived =
       updateData?.status === ArticleStatus.ARCHIVED &&
       article.status === ArticleStatus.DRAFT;
-    if (publishedToDraft || draftToArchived) {
-      throw new InternalServerErrorException(
-        'Cannot save publish article into drafts',
+    if (draftToArchived) {
+      throw new BadRequestException(
+        'Cannot archive an article that has never been published',
       );
     }
 
@@ -136,8 +134,9 @@ export class ArticleService {
     if (updateArticleDto.title) {
       const updatedSlug = await this.getSlug(updateArticleDto.title, id);
       updateData['slug'] = updatedSlug;
-      // set slug history if published article changes title
-      if (article?.status === ArticleStatus.PUBLISHED) {
+      // record slug history for any article that has ever been public,
+      // regardless of its current status, so old links keep redirecting
+      if (article?.publishedAt) {
         await this.prisma.articleSlugHistory.create({
           data: { articleId: article.id, slug: article.slug },
         });

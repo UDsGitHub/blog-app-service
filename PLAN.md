@@ -75,6 +75,18 @@ Not doing: SSE or websockets. Server-side consumers have no live client to notif
 
 "Save draft" is never offered on a published article, because it would silently unpublish it. Feedback is a toast (not a modal), which may carry a "Publish now" action.
 
+**Status transitions, resolved:**
+
+| From → To | Allowed | Notes |
+|---|---|---|
+| Draft → Published | yes | sets `publishedAt` if not already set |
+| Published → Archived | yes | |
+| Archived → Published | yes | `publishedAt` untouched |
+| Published → Draft (Unpublish) | yes | `publishedAt` untouched, so a re-publish doesn't look "new" |
+| Draft → Archived | **blocked** (500) | archived must imply "was once published", which keeps date-ordering (`getFilterDateColumn`) meaningful for the Archived tab |
+
+`Unpublish` was reconsidered against a stricter "archive-only" alternative. Decision: allow it directly, because the same end state (published article back in Drafts) was already reachable via `Published → Archived → Draft` — blocking the direct path added friction without adding safety, and it matches the WordPress/Ghost/Medium convention for "Unpublish". The one real risk this surfaced was fixed alongside it, not worked around: see slug history below.
+
 ## 6. Data model and API changes
 
 ### Schema additions
@@ -91,7 +103,7 @@ Not doing: SSE or websockets. Server-side consumers have no live client to notif
 
 - The slug always follows the title (`getSlug` on title change).
 - History table: `article_slug_history(slug unique, article_id FK on delete cascade, created_at)`.
-- When a title edit changes the slug of an article with `publishedAt` set, insert the old slug into the history. Slugs of never-published articles are not recorded, since nobody could have linked to them.
+- When a title edit changes the slug of an article that has ever had `publishedAt` set — regardless of its *current* status — insert the old slug into the history. Slugs of never-published articles are not recorded, since nobody could have linked to them. (Implemented as `if (article.publishedAt)`, not `if (article.status === PUBLISHED)`: the latter missed renames made while an article is unpublished/drafted or archived, silently dropping the redirect for a URL that had genuinely been public. This mattered once `Published → Draft` was allowed, since renaming a draft is normal author behavior — see the status transitions table above.)
 - History rows point to the **article id**, not to the next slug, so renames never form redirect chains.
 - `GET /articles/:slug`: look up `article.slug`, then fall back to the history table. On a history hit, return the article as normal (200). The response carries the current slug, and the consumer compares it to the requested slug and issues a permanent redirect (Next: `permanentRedirect`).
 - `getSlug` uniqueness checks both tables, so a new article cannot claim a slug that an old URL still redirects from. If an article reclaims one of its own old slugs, delete that history row.
@@ -151,3 +163,10 @@ To do (order: API first, then UI):
 - Access key guards non-published reads and all writes.
 - RTK Query as the data layer.
 - Stale cursor accepted, mitigated by tag invalidation.
+- Unpublish (`Published → Draft`) is allowed directly; `Draft → Archived` stays blocked. Slug history now keys off `publishedAt` ever having been set, not current status.
+
+## 11. Known follow-ups
+
+- [x] `draftToArchived` now throws `BadRequestException` (400), not 500 — fixed, tests updated (unit + e2e).
+- [x] `AuthGuard`'s length short-circuit before `timingSafeEqual`: accepted as-is. It only leaks `API_KEY`'s length, not its contents, which is what `timingSafeEqual` actually protects; not worth the extra complexity for a single-user key.
+- [ ] `browseArticles`/`searchArticles` in `article.controller.ts` duplicate an identical (word-for-word) unauthenticated-access guard block. Proposed fix: a private `assertPublicAccess(request, query)` method on the controller, called from both handlers — no decorator needed, since the messages aren't actually endpoint-specific today. Add an optional `context` string later only if the messages need to diverge.
