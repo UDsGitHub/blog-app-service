@@ -35,7 +35,9 @@ export class AuthGuard implements CanActivate {
 
     let isAuthenticated = false;
     const incomingKeyBuffer = Buffer.from(apiKey);
-    const envKeyBuffer = Buffer.from(this.configService.get('API_KEY') ?? '');
+    const envKeyBuffer = Buffer.from(
+      this.configService.get<string>('API_KEY') ?? '',
+    );
     if (incomingKeyBuffer.length === envKeyBuffer.length) {
       isAuthenticated = timingSafeEqual(incomingKeyBuffer, envKeyBuffer);
     }

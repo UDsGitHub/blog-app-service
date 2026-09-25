@@ -6,8 +6,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { AuthenticatedRequest } from '../guard/authenticated-request.interface';
-import { ArticleStatus } from '../generated/prisma/enums';
+import { AuthenticatedRequest } from '../../guard/authenticated-request.interface';
+import { ArticleStatus } from '../../generated/prisma/enums';
 
 @Injectable()
 export class ArticleQueryGuard implements CanActivate {

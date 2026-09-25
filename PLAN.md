@@ -13,11 +13,13 @@ Status: planning only. The owner is making the API changes manually. Items marke
 
 Consumers pull. The API pushes only to server-side consumers that cache.
 
-| Consumer type | Mechanism |
-|---|---|
-| Server-cached (Next portfolio) | API sends a signed **webhook** on publish-affecting events. Portfolio route handler verifies the signature and calls `revalidateTag('articles')`. |
-| Client apps (studio, future SPAs) | RTK Query cache: tag invalidation after own mutations, refetch on focus. |
-| Everyone (baseline) | `ETag` plus `Cache-Control: s-maxage=60, stale-while-revalidate` on `GET /articles`, so a failed webhook is bounded to about 1 minute of staleness. |
+
+| Consumer type                     | Mechanism                                                                                                                                           |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server-cached (Next portfolio)    | API sends a signed **webhook** on publish-affecting events. Portfolio route handler verifies the signature and calls `revalidateTag('articles')`.   |
+| Client apps (studio, future SPAs) | RTK Query cache: tag invalidation after own mutations, refetch on focus.                                                                            |
+| Everyone (baseline)               | `ETag` plus `Cache-Control: s-maxage=60, stale-while-revalidate` on `GET /articles`, so a failed webhook is bounded to about 1 minute of staleness. |
+
 
 Events that fire the webhook:
 
@@ -39,6 +41,8 @@ Not doing: SSE or websockets. Server-side consumers have no live client to notif
 - UI consequence: browsing is the list (infinite scroll), and searching is the command palette (top N results, "refine your query" footer). The two are separate tools.
 - Search results return a highlighted snippet (`ts_headline`) instead of the body.
 - **List ordering [open]:** `PUBLISHED` sorts by `publishedAt desc`. Other statuses sort by `createdAt desc` (or `updatedAt`, for "recently edited" drafts). The API picks the sort key from the `status` filter. `id desc` stays as the tie-breaker.
+
+
 
 ## 4. Layout and flow
 
@@ -64,30 +68,38 @@ Not doing: SSE or websockets. Server-side consumers have no live client to notif
 - Selecting an article sets the route `/articles/:id`. The studio loads the full article by id (list responses have no body). Switching away from unsaved edits prompts save or discard.
 - Mobile: list is full screen, tapping opens the editor full screen with a back button, and the palette becomes a full-screen sheet.
 
+
+
 ## 5. Editor action states (intentional saves, no autosave)
 
-| Article state | Actions | Result |
-|---|---|---|
-| New (unsaved) | Discard, Save draft, Publish | Toast: "Saved to drafts". Publish creates with `PUBLISHED`. |
-| Draft | Discard changes, Save draft, Publish | Publish sets `PUBLISHED`. |
-| Published | Discard changes, **Update**, Unpublish | Update saves changes live. Unpublish reverts to `DRAFT`. |
-| Any | Overflow menu: Archive, Delete (confirm dialog) | |
+
+| Article state | Actions                                         | Result                                                      |
+| ------------- | ----------------------------------------------- | ----------------------------------------------------------- |
+| New (unsaved) | Discard, Save draft, Publish                    | Toast: "Saved to drafts". Publish creates with `PUBLISHED`. |
+| Draft         | Discard changes, Save draft, Publish            | Publish sets `PUBLISHED`.                                   |
+| Published     | Discard changes, **Update**, Unpublish          | Update saves changes live. Unpublish reverts to `DRAFT`.    |
+| Any           | Overflow menu: Archive, Delete (confirm dialog) |                                                             |
+
 
 "Save draft" is never offered on a published article, because it would silently unpublish it. Feedback is a toast (not a modal), which may carry a "Publish now" action.
 
 **Status transitions, resolved:**
 
-| From → To | Allowed | Notes |
-|---|---|---|
-| Draft → Published | yes | sets `publishedAt` if not already set |
-| Published → Archived | yes | |
-| Archived → Published | yes | `publishedAt` untouched |
-| Published → Draft (Unpublish) | yes | `publishedAt` untouched, so a re-publish doesn't look "new" |
-| Draft → Archived | **blocked** (500) | archived must imply "was once published", which keeps date-ordering (`getFilterDateColumn`) meaningful for the Archived tab |
+
+| From → To                     | Allowed           | Notes                                                                                                                       |
+| ----------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Draft → Published             | yes               | sets `publishedAt` if not already set                                                                                       |
+| Published → Archived          | yes               |                                                                                                                             |
+| Archived → Published          | yes               | `publishedAt` untouched                                                                                                     |
+| Published → Draft (Unpublish) | yes               | `publishedAt` untouched, so a re-publish doesn't look "new"                                                                 |
+| Draft → Archived              | **blocked** (500) | archived must imply "was once published", which keeps date-ordering (`getFilterDateColumn`) meaningful for the Archived tab |
+
 
 `Unpublish` was reconsidered against a stricter "archive-only" alternative. Decision: allow it directly, because the same end state (published article back in Drafts) was already reachable via `Published → Archived → Draft` — blocking the direct path added friction without adding safety, and it matches the WordPress/Ghost/Medium convention for "Unpublish". The one real risk this surfaced was fixed alongside it, not worked around: see slug history below.
 
 ## 6. Data model and API changes
+
+
 
 ### Schema additions
 
@@ -99,6 +111,8 @@ Not doing: SSE or websockets. Server-side consumers have no live client to notif
 - `article_slug_history` table (see below).
 - Future: `coverImageUrl`, `tags text[]` with a GIN index. See section 9.
 
+
+
 ### Slug rule: dynamic, with a history table
 
 - The slug always follows the title (`getSlug` on title change).
@@ -109,24 +123,30 @@ Not doing: SSE or websockets. Server-side consumers have no live client to notif
 - `getSlug` uniqueness checks both tables, so a new article cannot claim a slug that an old URL still redirects from. If an article reclaims one of its own old slugs, delete that history row.
 - Deleting an article cascades its history, so old URLs 404.
 
+
+
 ### Endpoint changes
 
 Done (by owner):
+
 - [x] `status` filter on list, no forced default
 - [x] `updatedAt` set on update
 - [x] search result includes `status`
 
 To do (order: API first, then UI):
-- [ ] Access guard (section 7), covering list, search and `findBySlug`
-- [ ] Search SQL filters by `status`
-- [ ] Remove `console.log('status passed')` in `article.service.ts`
-- [ ] `GET` article by id for the studio (authed). List has no body, and slugs are not stable route keys. **[open]** path: `/articles/id/:id`, or UUID detection on `:slug`.
-- [ ] List responses omit `body`. Return `excerpt` (stored or derived).
-- [ ] Add `excerpt` and `publishedAt` columns and the slug history table (migration)
-- [ ] Slug history logic in create, update and `findBySlug`
-- [ ] Date-range filter params (`from`, `to` on `publishedAt`), compatible with cursor pagination
+
+- [x] Access guard (section 7), covering list, search and `findBySlug`
+- [x] Search SQL filters by `status`
+- [x] Remove `console.log('status passed')` in `article.service.ts`
+- [x] `GET` article by id for the studio (authed). List has no body, and slugs are not stable route keys. **[open]** path: `/articles/id/:id`, or UUID detection on `:slug`.
+- [x] List responses omit `body`. Return `excerpt` (stored or derived).
+- [x] Add `excerpt` and `publishedAt` columns and the slug history table (migration)
+- [x] Slug history logic in create, update and `findBySlug`
+- [x] Date-range filter params (`from`, `to` on `publishedAt`), compatible with cursor pagination
 - [ ] Webhook module (section 2)
 - [ ] `ETag` and `Cache-Control` on list and detail
+
+
 
 ## 7. Auth and access
 
@@ -139,16 +159,22 @@ To do (order: API first, then UI):
   - Sanitize rendered markdown in the preview (e.g. `rehype-sanitize`), since an XSS on the origin could read localStorage.
   - **[open]** If the studio is only ever run on localhost, a `VITE_` env var is acceptable.
 
+
+
 ## 8. Frontend stack
 
 - Studio: Vite + React 19 + TypeScript (existing `client/`).
 - Data layer: RTK Query. Tags for the list and per-article invalidation, `infiniteQuery` for the scroll list, `setupListeners` for refetch on focus.
 - UI: Tailwind plus shadcn/ui (cmdk for the palette, vaul for drawers), markdown editor with preview.
 
+
+
 ## 9. Future: images and tags
 
 - **Images (Cloudinary):** the browser uploads directly to Cloudinary, using a server-signed upload or an unsigned preset. The article stores the returned `secure_url` (cover image column). Body images are inserted into the markdown as URLs. Consumers can add transformations to the URL (width, format).
 - **Tags:** `tags text[]` on `article`, lowercased, with a GIN index. Filtering is `tags @> ARRAY[...]` and works with cursor pagination. Tag filter goes in the same filter drawer as date range. If tag metadata or one-place renames are ever needed, migrate to normalized tables.
+
+
 
 ## 10. Decisions log
 
@@ -165,8 +191,32 @@ To do (order: API first, then UI):
 - Stale cursor accepted, mitigated by tag invalidation.
 - Unpublish (`Published → Draft`) is allowed directly; `Draft → Archived` stays blocked. Slug history now keys off `publishedAt` ever having been set, not current status.
 
+
+
+## 11a. Redis caching design
+
+Three cache layers exist and are complementary, not redundant, because each protects a different audience:
+
+| Layer | Protects against | Who benefits |
+|---|---|---|
+| RTK Query (studio, browser) | Re-fetching within one browser tab | Only the studio, only within a session |
+| HTTP `ETag`/`Cache-Control` | Re-sending a full body to a client that already has it | Any individual repeat client (a browser, a Next.js server fetch) |
+| Redis | Re-running the same DB query at all | Every request that reaches the server, from any client |
+
+They funnel: RTK Query → HTTP conditional request → Redis → Postgres, each only exercised when the one before it misses. Note: Railway does not turn `Cache-Control` into a shared edge cache — it just runs the container. The header only pays off for a client that itself honors it (a browser, a CDN if one is ever added). The portfolio's real freshness guarantee is the webhook → `revalidateTag`, not this header.
+
+**Invalidation: a single version counter, not key enumeration or pattern deletion.** `ArticleCacheService` (`server/src/article/cache/`) keeps one Redis integer, `articles:version`. Every cache key (`articles:v{n}:browse:...`, `articles:v{n}:search:...`, `articles:v{n}:slug:{slug}`) embeds the current version. A write calls `bumpVersion()`, which changes what key *future* reads compute — old entries aren't deleted, they just become unreachable and expire via TTL. This was chosen over `SCAN`+`UNLINK` pattern deletion (the other valid option — `KEYS` is never safe, it blocks Redis's single event loop) because one `INCR`-style bump invalidates every cache shape (list, search, and detail) in one op, including future ones, versus needing a separate scan per key prefix.
+
+**Scope: broader than originally proposed, and that's fine.** The plan had recommended caching public (unauthenticated) reads only, to sidestep an author seeing their own stale edit. The implementation caches *all* browse/search/slug reads, authenticated or not — but this is safe and consistent because `bumpVersion()` fires on every create/update/delete (not just publish-affecting ones), so an admin's own follow-up read after saving always computes a new, uncached key. Broader caching without narrower invalidation would have been wrong; broader caching *with* broader invalidation is fine, and this is what was built.
+
+**`findBySlug` caching is gated on the article's actual status, not on `isAuthenticated`.** Only a `PUBLISHED` result is ever written to or served from cache; a `DRAFT`/`ARCHIVED` result always goes straight to `articleService.findBySlug`, which still does its own 404 gating for unauthenticated callers. This means the cache never holds non-public content, which is a stronger guarantee than gating on the caller's auth would have been.
+
+**Known limitation, accepted:** `bumpVersion()` is a read-then-write (`get` the version, `set` version+1), not an atomic Redis `INCR` — the generic `Cache` interface from `@nestjs/cache-manager` doesn't expose atomic increment across arbitrary stores. Two saves landing in the same few milliseconds could lose an increment. For a single-author tool this is very low risk (verified live: create → browse → update → browse showed the edit immediately, versions `v2`→`v3` as expected). Not fixed now; if it ever matters, the fix is a raw Redis client (e.g. `ioredis`) used only for this one counter.
+
+**Still open:** `- [ ] figure out appropriate TTLs for cache keys` (todo.md) — currently a flat 60s (`60_000`, confirmed empirically to be milliseconds, not seconds) for every key shape.
+
 ## 11. Known follow-ups
 
 - [x] `draftToArchived` now throws `BadRequestException` (400), not 500 — fixed, tests updated (unit + e2e).
 - [x] `AuthGuard`'s length short-circuit before `timingSafeEqual`: accepted as-is. It only leaks `API_KEY`'s length, not its contents, which is what `timingSafeEqual` actually protects; not worth the extra complexity for a single-user key.
-- [ ] `browseArticles`/`searchArticles` in `article.controller.ts` duplicate an identical (word-for-word) unauthenticated-access guard block. Proposed fix: a private `assertPublicAccess(request, query)` method on the controller, called from both handlers — no decorator needed, since the messages aren't actually endpoint-specific today. Add an optional `context` string later only if the messages need to diverge.
+- [x] `browseArticles`/`searchArticles` deduped: extracted into `ArticleQueryGuard` (`src/article/article-query.guard.ts`), applied via `@UseGuards` on both routes, with its own unit spec. Reads raw `request.query` (pre-`ValidationPipe`, since guards run before pipes) — fine here since it only does string equality/truthiness checks, not date parsing; a repeated query param (`?status=A&status=B`) would slip past this guard as an array but gets rejected by the DTO's `@IsEnum` validation right after, so no real gap.

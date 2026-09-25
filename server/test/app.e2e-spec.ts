@@ -692,6 +692,14 @@ describe('AppController (e2e)', () => {
       await asPublic('get', '/articles/search').expect(400);
     });
 
+    it('PUBLISHED status returns 200 on browse/search articles', async () => {
+      await asPublic('get', '/articles?status=PUBLISHED').expect(200);
+      await asPublic(
+        'get',
+        '/articles/search?search=banana&status=PUBLISHED',
+      ).expect(200);
+    });
+
     it('wrong key is treated as unauthenticated on admin routes', async () => {
       await asPublic('post', '/articles')
         .set({ Authorization: 'ApiKey wrong' })

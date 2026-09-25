@@ -28,11 +28,15 @@ import {
 import { ArticleEntity } from './article.entity';
 import type { AuthenticatedRequest } from '../guard/authenticated-request.interface';
 import { AdminOnly } from '../guard/admin-only.decorator';
-import { ArticleQueryGuard } from './article-query.guard';
+import { ArticleQueryGuard } from './guard/article-query.guard';
+import { ArticleCacheService } from './cache/article-cache.service';
 
 @Controller('articles')
 export class ArticleController {
-  constructor(private readonly articleService: ArticleService) {}
+  constructor(
+    private readonly articleService: ArticleService,
+    private cacheService: ArticleCacheService,
+  ) {}
 
   @Post()
   @AdminOnly(true)
@@ -45,7 +49,11 @@ export class ArticleController {
       );
     }
 
-    return this.articleService.create(createArticleDto);
+    const response = await this.articleService.create(createArticleDto);
+
+    await this.cacheService.bumpVersion();
+
+    return response;
   }
 
   @Get()
@@ -56,13 +64,31 @@ export class ArticleController {
   async browseArticles(
     @Query() query: BrowseArticlesQueryDto,
   ): Promise<BrowseArticlesResponseDto> {
-    return this.articleService.browse(
-      query.limit,
-      query.cursorId,
-      query.status,
-      query.startDate,
-      query.endDate,
+    const { limit, cursorId, status, startDate, endDate } = query;
+
+    const cacheKey = await this.cacheService.browseKey(
+      limit,
+      cursorId,
+      status,
+      startDate,
+      endDate,
     );
+    const cached =
+      await this.cacheService.get<BrowseArticlesResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const response = await this.articleService.browse(
+      limit,
+      cursorId,
+      status,
+      startDate,
+      endDate,
+    );
+    await this.cacheService.set(cacheKey, response);
+
+    return response;
   }
 
   @Get('/search')
@@ -73,13 +99,31 @@ export class ArticleController {
   async searchArticles(
     @Query() query: SearchArticlesQueryDto,
   ): Promise<SearchArticlesResponseDto> {
-    return this.articleService.search(
-      query.limit,
-      query.search,
-      query.status,
-      query.startDate,
-      query.endDate,
+    const { limit, search, status, startDate, endDate } = query;
+
+    const cacheKey = await this.cacheService.searchKey(
+      limit,
+      search,
+      status,
+      startDate,
+      endDate,
     );
+    const cached =
+      await this.cacheService.get<SearchArticlesResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const response = await this.articleService.search(
+      limit,
+      search,
+      status,
+      startDate,
+      endDate,
+    );
+    await this.cacheService.set(cacheKey, response);
+
+    return response;
   }
 
   @Get('id/:id')
@@ -95,13 +139,27 @@ export class ArticleController {
     @Req() request: AuthenticatedRequest,
     @Param('slug') slug: string,
   ) {
-    return this.articleService.findBySlug(request.isAuthenticated, slug);
+    const cacheKey = await this.cacheService.slugKey(slug);
+    const cached = await this.cacheService.get<Article>(cacheKey);
+    if (cached && cached.status === ArticleStatus.PUBLISHED) {
+      return cached;
+    }
+
+    const article = await this.articleService.findBySlug(
+      request.isAuthenticated,
+      slug,
+    );
+    if (article?.status === ArticleStatus.PUBLISHED) {
+      await this.cacheService.set(cacheKey, article);
+    }
+
+    return article;
   }
 
   @Patch(':id')
   @AdminOnly(true)
   @ApiOkResponse({ type: ArticleEntity })
-  updateArticle(
+  async updateArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateArticleDto: UpdateArticleDto,
   ): Promise<Article> {
@@ -118,15 +176,23 @@ export class ArticleController {
       );
     }
 
-    return this.articleService.update(id, updateArticleDto);
+    const response = await this.articleService.update(id, updateArticleDto);
+
+    await this.cacheService.bumpVersion();
+
+    return response;
   }
 
   @Delete(':id')
   @AdminOnly(true)
   @ApiOkResponse({ type: ArticleEntity })
-  removeArticle(
+  async removeArticle(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<Article> {
-    return this.articleService.remove(id);
+    const response = await this.articleService.remove(id);
+
+    await this.cacheService.bumpVersion();
+
+    return response;
   }
 }

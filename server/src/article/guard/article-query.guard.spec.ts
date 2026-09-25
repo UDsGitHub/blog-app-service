@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ArticleQueryGuard } from './article-query.guard';
-import { ArticleStatus } from '../generated/prisma/enums';
+import { ArticleStatus } from '../../generated/prisma/enums';
 
 describe('Article Query Guard', () => {
   let guard: ArticleQueryGuard;

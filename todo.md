@@ -3,6 +3,7 @@
 - [x] update unit tests and e2e tests based on current checked changes for API 
 - [x] include excerpt in select for non-search article list and exclude body. derive excerpt from body if excerpt is empty
 - [x] env file for container seems to be using my regular env not test env... adding envfilepath in app module gets the test env in for docker, but when i run the app, it uses test env instead of regular env
+- [ ] figure out appropriate TTLs for cache keys
 
 Plan: see PLAN.md. API first, then UI.
 
@@ -26,7 +27,7 @@ Plan: see PLAN.md. API first, then UI.
 - [x] update tests for all of the above
 - [x] follow-up: draftToArchived now throws BadRequestException (400) instead of 500
 - [x] follow-up: AuthGuard key-length short-circuit reviewed, accepted as-is (only leaks key length, not contents)
-- [ ] follow-up: dedupe the unauthenticated-status-required block shared by browseArticles/searchArticles into a private `assertPublicAccess` method (see PLAN.md §11)
+- [x] follow-up: deduped browseArticles/searchArticles guard block into ArticleQueryGuard, with its own tests (see PLAN.md §11)
 
 ## Portfolio (~/code/apps/portfolio)
 - [ ] revalidate route handler: verify HMAC, revalidateTag('articles')
